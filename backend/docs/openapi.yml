@@ -1,0 +1,678 @@
+openapi: 3.0.3
+info:
+  title: Pro-Dvizhenie API
+  version: "0.1.0"
+  description: |
+    MVP API для веб-анкеты с возможностью сохранять черновики, продолжать заполнение,
+    загружать документы и работать через админ-интерфейс. Авторизация — http-only cookie.
+servers:
+  - url: https://api.example.com
+    description: Production
+  - url: http://localhost:8000
+    description: Local dev
+
+tags:
+  - name: Public Forms
+    description: Публичные эндпоинты анкеты (без логина)
+  - name: Auth
+    description: Авторизация и сессии
+  - name: Documents
+    description: Загрузка и скачивание документов
+  - name: Applications (Admin)
+    description: Админ-операции с заявками
+  - name: Analytics (Admin)
+    description: Простая аналитика
+  - name: Bot
+    description: Вебхук Telegram (если потребуется)
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Логин (cookie http-only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginIn' }
+      responses:
+        "200":
+          description: Успех (куки выставлены)
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: HttpOnly cookie сессии / access и refresh токены
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeOut' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Обновление access по refresh (cookie)
+      responses:
+        "200":
+          description: Обновлено (access cookie)
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход (очистка cookies)
+      responses:
+        "204":
+          description: Вышли, cookies очищены
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Текущий пользователь
+      security: [{ cookieAuth: [] }]
+      responses:
+        "200":
+          description: Текущий пользователь
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeOut' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/forms/{form_id}/sessions:
+    post:
+      tags: [Public Forms]
+      summary: Создать сессию заполнения формы (анонимно)
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: Сессия создана, выдан cookie и public_id заявки
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: HttpOnly cookie session_token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  public_id: { type: string, format: uuid }
+                  form: { $ref: '#/components/schemas/SurveyOut' }
+
+  /api/v1/applications/{public_id}/draft:
+    get:
+      tags: [Public Forms]
+      summary: Получить черновик анкеты
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      responses:
+        "200":
+          description: Черновик
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDraftOut' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Public Forms]
+      summary: Частично сохранить черновик
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationDraftPatch' }
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDraftOut' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/applications/{public_id}/submit:
+    post:
+      tags: [Public Forms]
+      summary: Финальная отправка анкеты
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      responses:
+        "200":
+          description: Заявка отправлена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationOut' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/applications/{public_id}/resume-link:
+    post:
+      tags: [Public Forms]
+      summary: Выслать ссылку для продолжения на e-mail/телефон
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel:
+                  type: string
+                  enum: [email, sms]
+                address:
+                  type: string
+              required: [channel, address]
+      responses:
+        "204":
+          description: Ссылка отправлена
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/consents:
+    post:
+      tags: [Public Forms]
+      summary: Зафиксировать согласие на обработку ПДн
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentIn' }
+      responses:
+        "201":
+          description: Согласие зафиксировано
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentOut' }
+
+  /api/v1/documents/presign-upload:
+    post:
+      tags: [Documents]
+      summary: Получить presigned URL для загрузки файла в S3/MinIO
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PresignUploadIn' }
+      responses:
+        "200":
+          description: Ссылки сгенерированы
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PresignUploadOut' }
+
+  /api/v1/documents:
+    post:
+      tags: [Documents]
+      summary: Зарегистрировать загруженный документ (метаданные)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentIn' }
+      responses:
+        "201":
+          description: Документ сохранён
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentOut' }
+
+  /api/v1/documents/{document_id}/download:
+    get:
+      tags: [Documents]
+      summary: Получить presigned URL на скачивание документа
+      parameters:
+        - in: path
+          name: document_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Ссылка на скачивание
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  download_url: { type: string, format: uri }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/applications:
+    get:
+      tags: [Applications (Admin)]
+      summary: Листинг заявок (админка)
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, submitted, under_review, approved, rejected]
+        - in: query
+          name: q
+          schema: { type: string, description: Поиск по ФИО/ID/телефон/почта }
+        - in: query
+          name: sort
+          schema: { type: string, example: "created_at:desc" }
+      responses:
+        "200":
+          description: Пагинированный список
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedApplications' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/admin/applications/{id}:
+    get:
+      tags: [Applications (Admin)]
+      summary: Детали заявки с данными/документами/историей/комментариями
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Детали
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDetails' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/applications/{id}/status:
+    post:
+      tags: [Applications (Admin)]
+      summary: Сменить статус заявки
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_status]
+              properties:
+                new_status:
+                  type: string
+                  enum: [under_review, approved, rejected]
+                comment:
+                  type: string
+      responses:
+        "200":
+          description: Статус изменён
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationOut' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/applications/{id}/comments:
+    post:
+      tags: [Applications (Admin)]
+      summary: Добавить комментарий к заявке
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment, is_urgent]
+              properties:
+                comment: { type: string }
+                is_urgent: { type: boolean }
+      responses:
+        "201":
+          description: Комментарий добавлен
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentOut' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/analytics:
+    get:
+      tags: [Analytics (Admin)]
+      summary: Простой набор метрик по заявкам
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: survey_id
+          schema: { type: string }
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Агрегаты
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  by_status:
+                    type: object
+                    additionalProperties: { type: integer }
+                  by_channel:
+                    type: object
+                    additionalProperties: { type: integer }
+
+  /api/v1/bot/telegram/webhook:
+    post:
+      tags: [Bot]
+      summary: Вебхук Telegram (опционально)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, description: Update от Telegram }
+      responses:
+        "200":
+          description: Обработано
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid  # или свой access_token cookie
+
+  parameters:
+    PublicId:
+      in: path
+      name: public_id
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Unauthorized:
+      description: Неавторизован
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Not found"
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Validation error"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+    LoginIn:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: "admin@example.com" }
+        password: { type: string, example: "secret" }
+
+    MeOut:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        phone: { type: string }
+        role:
+          type: string
+          enum: [applicant, employee, admin]
+        primary_platform:
+          type: string
+          enum: [web, telegram]
+        last_platform_used:
+          type: string
+          enum: [web, telegram]
+
+    SurveyOut:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+
+    Question:
+      type: object
+      properties:
+        id: { type: integer }
+        type:
+          type: string
+          enum: [single, multi, text, number, date, file]
+        text: { type: string }
+        required: { type: boolean }
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              text: { type: string }
+
+    ApplicationDraftPatch:
+      type: object
+      required: [stage_number, fields]
+      properties:
+        stage_number: { type: integer, minimum: 0 }
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationFieldIn'
+
+    ApplicationFieldIn:
+      type: object
+      required: [name, value, type]
+      properties:
+        name: { type: string, example: "surname" }
+        type:
+          type: string
+          enum: [text, number, date, bool, single, multi, file]
+        value:
+          description: Универсальное поле значения
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+            - type: array
+              items: { type: string }
+
+    ApplicationDraftOut:
+      type: object
+      properties:
+        public_id: { type: string, format: uuid }
+        current_stage: { type: integer }
+        status:
+          type: string
+          enum: [draft, submitted, under_review, approved, rejected]
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationFieldOut'
+
+    ApplicationFieldOut:
+      type: object
+      properties:
+        name: { type: string }
+        type:
+          type: string
+          enum: [text, number, date, bool, single, multi, file]
+        value:
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+            - type: array
+              items: { type: string }
+
+    ApplicationOut:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [draft, submitted, under_review, approved, rejected]
+        applicant_type: { type: string }
+        created_at: { type: string, format: date-time }
+        submitted_at: { type: string, format: date-time, nullable: true }
+
+    PresignUploadIn:
+      type: object
+      required: [filename, content_type]
+      properties:
+        filename: { type: string, example: "passport.pdf" }
+        content_type: { type: string, example: "application/pdf" }
+        application_public_id:
+          type: string
+          format: uuid
+          nullable: true
+        document_type:
+          type: string
+          example: "passport"
+
+    PresignUploadOut:
+      type: object
+      properties:
+        upload_url: { type: string, format: uri }
+        download_url: { type: string, format: uri }
+        key: { type: string, example: "documents/7c1b.../passport.pdf" }
+
+    DocumentIn:
+      type: object
+      required: [application_public_id, document_type, key, file_name, file_size]
+      properties:
+        application_public_id: { type: string, format: uuid }
+        document_type: { type: string }
+        key: { type: string, description: S3 объектный ключ }
+        file_name: { type: string }
+        file_size: { type: integer }
+        upload_status:
+          type: string
+          enum: [pending, uploaded, verified, rejected]
+          default: uploaded
+
+    DocumentOut:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        application_id: { type: integer }
+        document_type: { type: string }
+        file_name: { type: string }
+        file_size: { type: integer }
+        key: { type: string }
+        upload_status:
+          type: string
+          enum: [pending, uploaded, verified, rejected]
+        uploaded_at: { type: string, format: date-time }
+
+    ConsentIn:
+      type: object
+      required: [application_public_id, consent_type, is_given]
+      properties:
+        application_public_id: { type: string, format: uuid }
+        consent_type: { type: string, example: "pdn_processing" }
+        is_given: { type: boolean }
+        ip_address: { type: string, format: ipv4, nullable: true }
+
+    ConsentOut:
+      type: object
+      properties:
+        id: { type: integer }
+        application_id: { type: integer }
+        consent_type: { type: string }
+        is_given: { type: boolean }
+        given_at: { type: string, format: date-time }
+        ip_address: { type: string, format: ipv4, nullable: true }
+
+    CommentOut:
+      type: object
+      properties:
+        id: { type: integer }
+        application_id: { type: integer }
+        user_id: { type: integer }
+        comment: { type: string }
+        is_urgent: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    PaginatedApplications:
+      type: object
+      properties:
+        count: { type: integer }
+        page: { type: integer }
+        per_page: { type: integer }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/ApplicationOut' }
+
+    ApplicationDetails:
+      type: object
+      properties:
+        application: { $ref: '#/components/schemas/ApplicationOut' }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/ApplicationFieldOut' }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentOut' }
+        status_history:
+          type: array
+          items:
+            type: object
+            properties:
+              old_status: { type: string }
+              new_status: { type: string }
+              changed_by: { type: integer }
+              created_at: { type: string, format: date-time }
+        comments:
+          type: array
+          items: { $ref: '#/components/schemas/CommentOut' }
