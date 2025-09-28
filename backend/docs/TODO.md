@@ -6,11 +6,11 @@
 Добавляйте свои задачи сюда, если необходимо.
 
 ## Модели
-- [ ] Users
-  - [ ] Создать модель пользователя (кастомная, с менеджером)
-  - [ ] Добавить роли (applicant, employee, admin)
-  - [ ] Добавить платформенные поля (Telegram, Web)
-  - [ ] Прописать AUTH_USER_MODEL в settings
+- [x] Users
+  - [x] Создать модель пользователя (кастомная, с менеджером)
+  - [x] Добавить роли (applicant, employee, admin)
+  - [x] Добавить платформенные поля (Telegram, Web)
+  - [x] Прописать AUTH_USER_MODEL в settings
 
 - [ ] Applications
   - [ ] Модель Application
@@ -53,8 +53,8 @@
 
 ## API
 - [ ] Добавить роутер DRF
-- [ ] Настроить версионирование (/api/v1/)
-- [ ] Подключить drf-spectacular для OpenAPI
+- [x] Настроить версионирование (/api/v1/)
+- [x] Подключить drf-spectacular для OpenAPI
 
 ## Инфраструктура
 - [ ] Перейти на PostgreSQL (docker-compose, settings)
