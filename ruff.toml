@@ -1,0 +1,13 @@
+line-length = 88
+target-version = "py311"
+extend-exclude = [
+    "backend/config/settings.py",
+    "*/migrations/*",
+]
+
+[lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[format]
+docstring-code-format = true
