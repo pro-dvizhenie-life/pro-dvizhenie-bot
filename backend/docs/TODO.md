@@ -1,65 +1,44 @@
 # TODO
 
-## Модели
-- [ ] Users
-  - [ ] Создать модель пользователя (кастомная, с менеджером)
-  - [ ] Добавить роли (applicant, employee, admin)
-  - [ ] Добавить платформенные поля (Telegram, Web)
-  - [ ] Прописать AUTH_USER_MODEL в settings
+Краткий список актуальных задач и прогресса. Схема и код обновлены под `applications.0002_schema_sync`, поэтому миграции необходимо прогонять на всех окружениях.
 
-- [ ] Applications
-  - [x] Модель Application
-  - [x] Модель Answer (динамические ответы вместо ApplicationData)
-  - [ ] Модель ApplicationStatusHistory
-  - [ ] Модель ApplicationComments
-  - [x] Модели Survey/Step/Question/Option/Condition/DocumentRequirement
-  - [x] Пройти чек-лист по моделям (verbose_name, __str__, ordering, related_name)
+## Пользователи (users)
+- [x] Кастомная модель пользователя с менеджером и ролями
+- [x] AUTH_USER_MODEL выставлен на `users.User`
+- [x] Поля для Telegram/веб-платформ добавлены
+- [ ] Восстановление пароля и смена email через API
+- [ ] Заполнение профиля (ФИО, адрес) для заявителей
 
-- [ ] Documents
-  - [ ] Модель Document (тип, путь, статус)
-  - [ ] Метаданные для ФЗ-152
+## Заявки и анкеты (applications)
+- [x] Модели Application, Answer, StatusHistory, Comment, DataConsent, AuditLog
+- [x] Админка с фильтрами, поиском и пагинацией
+- [x] Публичный API: создание сессии, черновики, валидация, submit, комментарии
+- [x] Админский API: списки, деталка, таймлайн, смена статуса, CSV экспорт
+- [ ] Документы заявок (модель, загрузка, хранение)
+- [ ] Уведомления о смене статуса (email/Telegram)
+- [ ] Механизм удаления/архивации заявок
 
-- [ ] Consents
-  - [ ] Модель DataConsent (тип, время, ip)
+## Документы (documents)
+- [ ] Хранение метаданных и истории загрузок
+- [ ] Presigned upload/download через S3/MinIO
+- [ ] Валидация MIME-типа и антивирусная проверка (плейсхолдер)
 
-- [ ] Audit
-  - [ ] Модель AuditLog (действие, таблица, ip, время)
+## Авторизация и сессии
+- [x] Регистрация + автоматический логин и выдача JWT/cookie
+- [x] Логин/логаут с обновлением cookie
+- [x] Авторизация на административных эндпоинтах по ролям и IsStaff
+- [ ] Refresh endpoint и ротация токенов (если потребуется)
+- [ ] Rate limiting и защита от brute-force
 
-## Админка
-- [ ] Зарегистрировать Users c фильтрами по ролям
-- [x] Зарегистрировать Applications c фильтрами по статусам и ответами
-- [ ] Добавить инлайны для Documents и Comments
-- [x] Настроить readonly поля и поиск для динамической анкеты
+## Документация и контроль качества
+- [x] drf-spectacular включён, схема в `backend/docs/openapi.yml`
+- [x] Swagger/Redoc подключены через `/api/docs/`, `/api/redoc/`
+- [x] Команда `python backend/manage.py check` проходит без ошибок
+- [ ] Покрыть ключевые сценарии тестами (`manage.py test`)
+- [ ] Добавить документацию по развертыванию Docker (db, redis, minio)
 
-## Представления и URLs
-- [ ] Users
-  - [ ] /auth/login, logout, me
-- [ ] Applications
-  - [ ] /applications/ (list, detail)
-  - [ ] /applications/{id}/status (смена статуса)
-  - [ ] /applications/{id}/comments (CRUD комментариев)
-- [ ] Documents
-  - [ ] presigned upload
-  - [ ] presigned download
-- [ ] Consents
-  - [ ] POST согласия
-- [ ] Draft
-  - [x] POST /forms/<code>/sessions/ (создание сессии)
-  - [x] GET черновика
-  - [x] PATCH сохранение полей
-  - [x] POST next шаг
-  - [x] POST submit анкеты
-
-## API
-- [ ] Добавить роутер DRF
-- [x] Настроить версионирование (/api/v1/)
-- [ ] Подключить drf-spectacular для OpenAPI
-
-## Документация
-- [x] Обновить OpenAPI по динамической анкете
-- [x] Подготовить Frontend Integration Guide
-
-## Инфраструктура
-- [ ] Перейти на PostgreSQL (docker-compose, settings)
-- [ ] Настроить S3/MinIO (django-storages, boto3)
-- [ ] Настроить docker-compose: db, redis, minio
+## Инфраструктура и DevOps
+- [x] SQLite используется для разработки, миграции синхронизированы
+- [ ] Перейти на PostgreSQL + docker-compose
+- [ ] Настроить хранилище файлов (S3/MinIO) и переменные окружения
+- [ ] Подготовить CI (линтеры, тесты, сборка схемы)

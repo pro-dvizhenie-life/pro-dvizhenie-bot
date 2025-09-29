@@ -1,13 +1,21 @@
-"""Настройки админки для управления анкетами и заявками."""
+"""Регистрация моделей приложения заявок в админке."""
 
 from django.contrib import admin
 
-from .models_data import Answer, Application
-from .models_form import Condition, DocumentRequirement, Option, Question, Step, Survey
+from .models import (
+    Application,
+    ApplicationComment,
+    ApplicationStatusHistory,
+    AuditLog,
+    DataConsent,
+    Option,
+    Question,
+    Step,
+    Survey,
+)
 
 
 class OptionInline(admin.TabularInline):
-    """Встроенная форма вариантов ответа."""
 
     model = Option
     extra = 0
@@ -15,8 +23,6 @@ class OptionInline(admin.TabularInline):
 
 @admin.register(Survey)
 class SurveyAdmin(admin.ModelAdmin):
-    """Админ-панель анкет."""
-
     list_display = ("code", "title", "version", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "title")
@@ -24,8 +30,6 @@ class SurveyAdmin(admin.ModelAdmin):
 
 @admin.register(Step)
 class StepAdmin(admin.ModelAdmin):
-    """Админ-панель шагов анкеты."""
-
     list_display = ("code", "survey", "order")
     list_filter = ("survey",)
     search_fields = ("code", "title", "survey__code")
@@ -33,71 +37,66 @@ class StepAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    """Админ-панель вопросов с инлайнами вариантов."""
-
-    inlines = [OptionInline]
     list_display = ("code", "step", "type", "required")
     list_filter = ("type", "required", "step__survey")
     search_fields = ("code", "label", "step__code")
+    inlines = [OptionInline]
 
 
-@admin.register(Option)
-class OptionAdmin(admin.ModelAdmin):
-    """Админ-панель вариантов ответа."""
-
-    list_display = ("question", "value", "label", "order")
-    list_filter = ("question__step__survey",)
-    search_fields = ("value", "label", "question__code")
-
-
-@admin.register(Condition)
-class ConditionAdmin(admin.ModelAdmin):
-    """Админ-панель условий показа."""
-
-    list_display = ("survey", "scope", "question", "from_step", "goto_step")
-    list_filter = ("scope", "survey")
-    search_fields = ("survey__code",)
-
-
-@admin.register(DocumentRequirement)
-class DocumentRequirementAdmin(admin.ModelAdmin):
-    """Админ-панель требований к документам."""
-
-    list_display = ("survey", "code", "label")
-    list_filter = ("survey",)
-    search_fields = ("code", "label")
-
-
-class AnswerInline(admin.TabularInline):
-    """Readonly-инлайн ответов в карточке заявки."""
-
-    model = Answer
+class CommentInline(admin.TabularInline):
+    model = ApplicationComment
     extra = 0
     can_delete = False
-    readonly_fields = ("question", "value", "updated_at")
+    readonly_fields = ("user", "comment", "is_urgent", "created_at")
+
+
+class StatusInline(admin.TabularInline):
+    model = ApplicationStatusHistory
+    extra = 0
+    can_delete = False
+    readonly_fields = ("old_status", "new_status", "changed_by", "created_at")
 
 
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):
-    """Админ-панель заявок с привязанными ответами."""
-
-    inlines = [AnswerInline]
     list_display = (
         "public_id",
         "survey",
         "status",
-        "current_step",
+
+        "applicant_type",
+        "current_stage",
         "created_at",
         "submitted_at",
     )
     list_filter = ("status", "survey")
     search_fields = ("public_id",)
+    inlines = [CommentInline, StatusInline]
 
 
-@admin.register(Answer)
-class AnswerAdmin(admin.ModelAdmin):
-    """Админ-панель отдельных ответов."""
+@admin.register(ApplicationComment)
+class ApplicationCommentAdmin(admin.ModelAdmin):
+    list_display = ("application", "user", "is_urgent", "created_at")
+    list_filter = ("is_urgent",)
+    search_fields = ("application__public_id", "user__email")
 
-    list_display = ("application", "question", "updated_at")
-    list_filter = ("question__step__survey",)
-    search_fields = ("application__public_id", "question__code")
+
+@admin.register(ApplicationStatusHistory)
+class ApplicationStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = ("application", "old_status", "new_status", "changed_by", "created_at")
+    search_fields = ("application__public_id", "old_status", "new_status")
+
+
+@admin.register(DataConsent)
+class DataConsentAdmin(admin.ModelAdmin):
+    list_display = ("application", "user", "consent_type", "is_given", "given_at")
+    list_filter = ("consent_type", "is_given")
+    search_fields = ("application__public_id", "user__email")
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ("action", "table_name", "record_id", "user", "timestamp")
+    list_filter = ("action", "table_name")
+    search_fields = ("record_id", "user__email")
+    readonly_fields = ("timestamp",)
