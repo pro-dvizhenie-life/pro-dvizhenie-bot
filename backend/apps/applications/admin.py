@@ -16,6 +16,7 @@ from .models import (
 
 
 class OptionInline(admin.TabularInline):
+
     model = Option
     extra = 0
 
@@ -62,6 +63,7 @@ class ApplicationAdmin(admin.ModelAdmin):
         "public_id",
         "survey",
         "status",
+
         "applicant_type",
         "current_stage",
         "created_at",

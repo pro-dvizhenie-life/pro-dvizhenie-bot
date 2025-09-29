@@ -527,6 +527,15 @@ components:
           readOnly: true
         comments:
           type: array
+          description: Ошибки валидации ответов
+          items:
+            type: object
+            properties:
+              question: { type: string }
+              message: { type: string }
+        document_errors:
+          type: array
+          description: Ошибки по документам (если есть)
           items:
             type: object
             additionalProperties: {}
@@ -699,6 +708,7 @@ components:
       type: object
       description: Входные данные для обновления черновика анкеты.
       properties:
+
         answers:
           type: array
           items:
