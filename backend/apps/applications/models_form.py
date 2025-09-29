@@ -1,22 +1,29 @@
 """Модели описания динамических анкет."""
 
-from django.db import models
-
 from config.constants import (
     DOCUMENT_LABEL_MAX_LENGTH,
     OPTION_LABEL_MAX_LENGTH,
+    OPTION_ORDER_DEFAULT,
     OPTION_VALUE_MAX_LENGTH,
+    QUESTION_CODE_MAX_LENGTH,
     QUESTION_LABEL_MAX_LENGTH,
+    QUESTION_TYPE_MAX_LENGTH,
+    STEP_CODE_MAX_LENGTH,
     STEP_TITLE_MAX_LENGTH,
+    SURVEY_CODE_MAX_LENGTH,
     SURVEY_TITLE_MAX_LENGTH,
 )
+from django.db import models
 
 
 class Survey(models.Model):
     """Анкета, объединяющая набор шагов и вопросов."""
 
-    code = models.SlugField("Код анкеты", unique=True)
-    title = models.CharField("Название анкеты", max_length=SURVEY_TITLE_MAX_LENGTH)
+    code = models.SlugField("Код анкеты", max_length=SURVEY_CODE_MAX_LENGTH, unique=True)
+    title = models.CharField(
+        "Название анкеты",
+        max_length=SURVEY_TITLE_MAX_LENGTH
+    )
     version = models.PositiveIntegerField("Версия", default=1)
     is_active = models.BooleanField("Активна", default=True)
 
@@ -38,7 +45,7 @@ class Step(models.Model):
         on_delete=models.CASCADE,
         related_name="steps",
     )
-    code = models.SlugField("Код шага")
+    code = models.SlugField("Код шага", max_length=STEP_CODE_MAX_LENGTH)
     title = models.CharField("Название шага", max_length=STEP_TITLE_MAX_LENGTH)
     order = models.PositiveIntegerField("Порядок показа")
 
@@ -70,14 +77,22 @@ class Question(models.Model):
         on_delete=models.CASCADE,
         related_name="questions",
     )
-    code = models.SlugField("Код вопроса")
-    type = models.CharField("Тип вопроса", max_length=20, choices=QType.choices)
+    code = models.SlugField("Код вопроса", max_length=QUESTION_CODE_MAX_LENGTH)
+    type = models.CharField(
+        "Тип вопроса",
+        max_length=QUESTION_TYPE_MAX_LENGTH,
+        choices=QType.choices
+    )
     label = models.CharField(
         "Заголовок вопроса",
         max_length=QUESTION_LABEL_MAX_LENGTH,
     )
     required = models.BooleanField("Обязательный", default=False)
-    payload = models.JSONField("Дополнительные настройки", default=dict, blank=True)
+    payload = models.JSONField(
+        "Дополнительные настройки",
+        default=dict,
+        blank=True
+    )
 
     class Meta:
         unique_together = (("step", "code"),)
@@ -100,7 +115,7 @@ class Option(models.Model):
     )
     value = models.CharField("Значение", max_length=OPTION_VALUE_MAX_LENGTH)
     label = models.CharField("Подпись", max_length=OPTION_LABEL_MAX_LENGTH)
-    order = models.PositiveIntegerField("Порядок", default=0)
+    order = models.PositiveIntegerField("Порядок", default=OPTION_ORDER_DEFAULT)
 
     class Meta:
         ordering = ("order", "id")
@@ -169,9 +184,15 @@ class DocumentRequirement(models.Model):
         on_delete=models.CASCADE,
         related_name="doc_requirements",
     )
-    code = models.SlugField("Код требования")
-    label = models.CharField("Название документа", max_length=DOCUMENT_LABEL_MAX_LENGTH)
-    expression = models.JSONField("Условие необходимости", null=True, blank=True)
+    code = models.SlugField("Код требования", max_length=QUESTION_CODE_MAX_LENGTH)
+    label = models.CharField(
+        "Название документа",
+        max_length=DOCUMENT_LABEL_MAX_LENGTH
+    )
+    expression = models.JSONField(
+        "Условие необходимости",
+        null=True, blank=True
+    )
 
     class Meta:
         verbose_name = "Требование по документу"
