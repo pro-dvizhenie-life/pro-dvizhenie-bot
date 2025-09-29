@@ -6,23 +6,28 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import permissions, status
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.status import (
+    HTTP_201_CREATED,
+    HTTP_400_BAD_REQUEST,
+    HTTP_403_FORBIDDEN,
+)
 
 from ..models import Answer, Application, Question, Step, Survey
 from ..serializers import (
     AnswerPatchItemSerializer,
     ApplicationCommentInSerializer,
     ApplicationCommentOutSerializer,
+    CreateSessionRequestSerializer,
     DataConsentSerializer,
     DraftOutSerializer,
     DraftPatchSerializer,
     NextOutSerializer,
     SubmitResponseSerializer,
-    CreateSessionRequestSerializer,
 )
 from ..services.application_service import (
     add_comment,
@@ -146,7 +151,7 @@ def _validation_error(errors: List[Dict[str, str]]):
             "detail": "Validation error",
             "errors": errors,
         },
-        status=status.HTTP_400_BAD_REQUEST,
+        status=HTTP_400_BAD_REQUEST,
     )
 
 
@@ -172,7 +177,7 @@ def create_session(request, survey_code: str) -> Response:
     answers: Dict[str, Any] = {}
     payload = _serialize_application(application, answers)
     serializer = DraftOutSerializer(payload)
-    response = Response(serializer.data, status=status.HTTP_201_CREATED)
+    response = Response(serializer.data, status=HTTP_201_CREATED)
     response.set_cookie(
         "session_token",
         str(application.public_id),
@@ -195,7 +200,7 @@ def create_session(request, survey_code: str) -> Response:
 def get_draft(request, public_id: uuid.UUID) -> Response:
     application = _get_application(public_id)
     if not _user_can_access(request, application):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
     answers = build_answer_dict(application)
     payload = _serialize_application(application, answers)
     serializer = DraftOutSerializer(payload)
@@ -208,7 +213,7 @@ def get_draft(request, public_id: uuid.UUID) -> Response:
 def patch_draft(request, public_id: uuid.UUID) -> Response:
     application = _get_application(public_id)
     if not _user_can_access(request, application):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
     items = request.data.get("answers", []) if isinstance(request.data, dict) else []
     errors = _apply_answer_patch(application, items)
     if errors:
@@ -228,7 +233,7 @@ def patch_draft(request, public_id: uuid.UUID) -> Response:
 def post_next(request, public_id: uuid.UUID) -> Response:
     application = _get_application(public_id)
     if not _user_can_access(request, application):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
     if isinstance(request.data, dict) and request.data.get("answers"):
         errors = _apply_answer_patch(application, request.data["answers"])
         if errors:
@@ -253,7 +258,7 @@ def post_next(request, public_id: uuid.UUID) -> Response:
 def post_submit(request, public_id: uuid.UUID) -> Response:
     application = _get_application(public_id)
     if not _user_can_access(request, application):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
     if isinstance(request.data, dict) and request.data.get("answers"):
         errors = _apply_answer_patch(application, request.data["answers"])
         if errors:
@@ -298,12 +303,12 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
 def post_consent(request, public_id: uuid.UUID) -> Response:
     application = _get_application(public_id)
     if not _user_can_access(request, application):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
     serializer = DataConsentSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     user = request.user if request.user.is_authenticated else application.user
     if not user:
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     ip_address = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR")
     consent = record_consent(
@@ -320,7 +325,7 @@ def post_consent(request, public_id: uuid.UUID) -> Response:
         user=user,
         request=request,
     )
-    return Response(DataConsentSerializer(consent).data, status=status.HTTP_201_CREATED)
+    return Response(DataConsentSerializer(consent).data, status=HTTP_201_CREATED)
 
 
 class CommentPagination(PageNumberPagination):
@@ -342,7 +347,7 @@ class CommentPagination(PageNumberPagination):
 def application_comments(request, public_id: uuid.UUID) -> Response:
     application = _get_application(public_id)
     if not _user_can_access(request, application):
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
         queryset = application.comments.select_related("user").order_by("-created_at")
@@ -361,4 +366,4 @@ def application_comments(request, public_id: uuid.UUID) -> Response:
         request=request,
     )
     output = ApplicationCommentOutSerializer(comment)
-    return Response(output.data, status=status.HTTP_201_CREATED)
+    return Response(output.data, status=HTTP_201_CREATED)
