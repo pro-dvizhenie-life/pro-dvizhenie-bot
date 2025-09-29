@@ -1,5 +1,3 @@
-from django.http import HttpResponse
+"""Совместимость: переадресация к модулю представлений."""
 
-
-def index(request):
-    return HttpResponse("Applications index page")
+from .views import index  # noqa: F401
