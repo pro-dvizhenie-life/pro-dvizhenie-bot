@@ -1,62 +1,44 @@
 # TODO
 
-Сейчас проект на SQlite. Предлагаю юзать его для простоты. Когда сделаем модели, тогда
-предлагаю перейти на PostgreSQL.
-Реализовал модель пользовователя, сделал автосоздание пользователя при первом запуске.
-Добавляйте свои задачи сюда, если необходимо.
+Краткий список актуальных задач и прогресса. Схема и код обновлены под `applications.0002_schema_sync`, поэтому миграции необходимо прогонять на всех окружениях.
 
-## Модели
-- [x] Users
-  - [x] Создать модель пользователя (кастомная, с менеджером)
-  - [x] Добавить роли (applicant, employee, admin)
-  - [x] Добавить платформенные поля (Telegram, Web)
-  - [x] Прописать AUTH_USER_MODEL в settings
+## Пользователи (users)
+- [x] Кастомная модель пользователя с менеджером и ролями
+- [x] AUTH_USER_MODEL выставлен на `users.User`
+- [x] Поля для Telegram/веб-платформ добавлены
+- [ ] Восстановление пароля и смена email через API
+- [ ] Заполнение профиля (ФИО, адрес) для заявителей
 
-- [ ] Applications
-  - [ ] Модель Application
-  - [ ] Модель ApplicationData (поля анкеты)
-  - [ ] Модель ApplicationStatusHistory
-  - [ ] Модель ApplicationComments
+## Заявки и анкеты (applications)
+- [x] Модели Application, Answer, StatusHistory, Comment, DataConsent, AuditLog
+- [x] Админка с фильтрами, поиском и пагинацией
+- [x] Публичный API: создание сессии, черновики, валидация, submit, комментарии
+- [x] Админский API: списки, деталка, таймлайн, смена статуса, CSV экспорт
+- [ ] Документы заявок (модель, загрузка, хранение)
+- [ ] Уведомления о смене статуса (email/Telegram)
+- [ ] Механизм удаления/архивации заявок
 
-- [ ] Documents
-  - [ ] Модель Document (тип, путь, статус)
-  - [ ] Метаданные для ФЗ-152
+## Документы (documents)
+- [ ] Хранение метаданных и истории загрузок
+- [ ] Presigned upload/download через S3/MinIO
+- [ ] Валидация MIME-типа и антивирусная проверка (плейсхолдер)
 
-- [ ] Consents
-  - [ ] Модель DataConsent (тип, время, ip)
+## Авторизация и сессии
+- [x] Регистрация + автоматический логин и выдача JWT/cookie
+- [x] Логин/логаут с обновлением cookie
+- [x] Авторизация на административных эндпоинтах по ролям и IsStaff
+- [ ] Refresh endpoint и ротация токенов (если потребуется)
+- [ ] Rate limiting и защита от brute-force
 
-- [ ] Audit
-  - [ ] Модель AuditLog (действие, таблица, ip, время)
+## Документация и контроль качества
+- [x] drf-spectacular включён, схема в `backend/docs/openapi.yml`
+- [x] Swagger/Redoc подключены через `/api/docs/`, `/api/redoc/`
+- [x] Команда `python backend/manage.py check` проходит без ошибок
+- [ ] Покрыть ключевые сценарии тестами (`manage.py test`)
+- [ ] Добавить документацию по развертыванию Docker (db, redis, minio)
 
-## Админка
-- [ ] Зарегистрировать Users c фильтрами по ролям
-- [ ] Зарегистрировать Applications c фильтрами по статусам
-- [ ] Добавить инлайны для Documents и Comments
-- [ ] Настроить readonly поля и поиск
-
-## Представления и URLs
-- [ ] Users
-  - [ ] /auth/login, logout, me
-- [ ] Applications
-  - [ ] /applications/ (list, detail)
-  - [ ] /applications/{id}/status (смена статуса)
-  - [ ] /applications/{id}/comments (CRUD комментариев)
-- [ ] Documents
-  - [ ] presigned upload
-  - [ ] presigned download
-- [ ] Consents
-  - [ ] POST согласия
-- [ ] Draft
-  - [ ] GET черновика
-  - [ ] PATCH сохранение полей
-  - [ ] POST submit анкеты
-
-## API
-- [ ] Добавить роутер DRF
-- [x] Настроить версионирование (/api/v1/)
-- [x] Подключить drf-spectacular для OpenAPI
-
-## Инфраструктура
-- [ ] Перейти на PostgreSQL (docker-compose, settings)
-- [ ] Настроить S3/MinIO (django-storages, boto3)
-- [ ] Настроить docker-compose: db, redis, minio
+## Инфраструктура и DevOps
+- [x] SQLite используется для разработки, миграции синхронизированы
+- [ ] Перейти на PostgreSQL + docker-compose
+- [ ] Настроить хранилище файлов (S3/MinIO) и переменные окружения
+- [ ] Подготовить CI (линтеры, тесты, сборка схемы)

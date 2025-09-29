@@ -8,16 +8,24 @@
 
 ## Основные функции
 ### Для пользователей
-- **Пошаговое заполнение анкеты** с интуитивным интерфейсом
-- **Сохранение черновиков** и возможность вернуться к заполнению позже
-- **Загрузка документов** (JPG, PNG, PDF) с валидацией
-- **Предпросмотр анкеты** перед отправкой
-- **Поддержка разных статусов** заявителя (подопечный, родитель, опекун, родственник)
+- **Пошаговое заполнение анкеты** с динамическими шагами и условиями видимости вопросов
+- **Сохранение черновиков** и возможность вернуться к заполнению позже по `session_token`
+- **Регистрация и вход** по email/телефону с JWT и cookie-токенами
+- **Отправка согласий** с фиксацией IP-адреса и таймстемпа
 ### Для администраторов
-- **Личный кабинет** для просмотра и управления заявками
-- **Экспорт данных** в Excel/Google Таблицы
-- **Сортировка заявок** по статусам: "новая", "в обработке", "завершена"
-- **Комментирование заявок** сотрудниками фонда
+- **Просмотр и поиск заявок** с пагинацией и фильтрами по статусу, анкете, email/телефону
+- **Изменение статуса** с журналированием истории
+- **Комментирование заявок** и пометка срочных комментариев
+- **Экспорт заявок в CSV** с ответами на вопросы анкеты
+
+## API-обзор (v1)
+- `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/logout`, `/api/v1/users/me`
+- `/api/v1/applications/forms/<survey_code>/sessions/` — создание сессии и старт черновика
+- `/api/v1/applications/forms/<public_id>/draft/` — просмотр и обновление черновика
+- `/api/v1/applications/forms/<public_id>/next/`, `/submit/`, `/consents/`
+- `/api/v1/applications/forms/<public_id>/comments/` — чтение и добавление комментариев
+- `/api/v1/applications/admin/applications/…` — административные листинги, статусы и таймлайн
+- `/api/v1/applications/admin/export.csv` — потоковый экспорт данных
 
 ## Настройка окружения
 - Скопируйте `.env.example` в `.env` и заполните переменные:
@@ -31,9 +39,15 @@
 ## Запуск приложения
 - Создайте виртуальное окружение: `python3.11 -m venv venv`.
 - Активируйте окружение: `source venv/bin/activate`.
-- Установите зависимости: `pip install -r backend/requirements.txt`.
-- Примените миграции: `python backend/manage.py migrate`.
-- Запустите сервер: `python backend/manage.py runserver`.
+- Установите зависимости (пока список формируется): `pip install -r backend/requirements.txt`.
+- Примените миграции: `python backend/manage.py migrate` (добавлена миграция `applications.0002_schema_sync`).
+- Заполните базу тестовыми данными при необходимости и запустите сервер: `python backend/manage.py runserver`.
+
+## Проверка и вспомогательные команды
+- `python backend/manage.py check` — быстрый smoke-тест конфигурации
+- `python backend/manage.py spectacular --file backend/docs/openapi.yml` — регенерация схемы API
+- `python backend/manage.py test` — полный тестовый прогон (пустой, но хук на будущее)
+- `ruff check backend` / `ruff format backend` — линтер и форматтер
 
 ## Стиль кода
 - Следуйте PEP 8 и внутренним правилам для именования.
@@ -45,6 +59,5 @@
 - Для форматирования воспользуйтесь `ruff format backend`.
 
 ## Документация API
-- Черновая OpenAPI схема доступна по `/api/schema/`.
-- Swagger UI открыт по `/api/docs/`, Redoc — по `/api/redoc/`.
-- Для выгрузки схемы в файл выполните `python backend/manage.py spectacular --color > schema.yaml`.
+- Схема доступна по `/api/schema/`, Swagger UI — `/api/docs/`, Redoc — `/api/redoc/`.
+- Актуальная спецификация хранится в `backend/docs/openapi.yml`; для обновления выполните `python backend/manage.py spectacular --file backend/docs/openapi.yml`.
