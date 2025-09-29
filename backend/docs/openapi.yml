@@ -77,13 +77,13 @@ paths:
               schema: { $ref: '#/components/schemas/MeOut' }
         "401": { $ref: '#/components/responses/Unauthorized' }
 
-  /api/v1/forms/{form_id}/sessions:
+  /api/v1/applications/forms/{survey_code}/sessions/:
     post:
       tags: [Public Forms]
-      summary: Создать сессию заполнения формы (анонимно)
+      summary: Создать сессию заполнения анкеты (анонимно)
       parameters:
         - in: path
-          name: form_id
+          name: survey_code
           required: true
           schema: { type: string }
       responses:
@@ -95,13 +95,9 @@ paths:
               description: HttpOnly cookie session_token
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  public_id: { type: string, format: uuid }
-                  form: { $ref: '#/components/schemas/SurveyOut' }
+              schema: { $ref: '#/components/schemas/ApplicationDraftOut' }
 
-  /api/v1/applications/{public_id}/draft:
+  /api/v1/applications/{public_id}/draft/:
     get:
       tags: [Public Forms]
       summary: Получить черновик анкеты
@@ -109,68 +105,70 @@ paths:
         - $ref: '#/components/parameters/PublicId'
       responses:
         "200":
-          description: Черновик
+          description: Черновик заявки
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApplicationDraftOut' }
         "404": { $ref: '#/components/responses/NotFound' }
 
+  /api/v1/applications/{public_id}/draft/patch/:
     patch:
       tags: [Public Forms]
-      summary: Частично сохранить черновик
+      summary: Частично сохранить ответы черновика
       parameters:
         - $ref: '#/components/parameters/PublicId'
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ApplicationDraftPatch' }
+            schema: { $ref: '#/components/schemas/ApplicationDraftPatchIn' }
       responses:
         "200":
-          description: Сохранено
+          description: Черновик обновлён
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApplicationDraftOut' }
         "400": { $ref: '#/components/responses/ValidationError' }
         "404": { $ref: '#/components/responses/NotFound' }
 
-  /api/v1/applications/{public_id}/submit:
+  /api/v1/applications/{public_id}/next/:
+    post:
+      tags: [Public Forms]
+      summary: Сохранить ответы шага и перейти далее
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationDraftPatchIn' }
+      responses:
+        "200":
+          description: Новый текущий шаг
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationNextOut' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/applications/{public_id}/submit/:
     post:
       tags: [Public Forms]
       summary: Финальная отправка анкеты
       parameters:
         - $ref: '#/components/parameters/PublicId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationDraftPatchIn' }
       responses:
         "200":
           description: Заявка отправлена
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ApplicationOut' }
+              schema: { $ref: '#/components/schemas/ApplicationSubmitOut' }
         "400": { $ref: '#/components/responses/ValidationError' }
-        "404": { $ref: '#/components/responses/NotFound' }
-
-  /api/v1/applications/{public_id}/resume-link:
-    post:
-      tags: [Public Forms]
-      summary: Выслать ссылку для продолжения на e-mail/телефон
-      parameters:
-        - $ref: '#/components/parameters/PublicId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                channel:
-                  type: string
-                  enum: [email, sms]
-                address:
-                  type: string
-              required: [channel, address]
-      responses:
-        "204":
-          description: Ссылка отправлена
         "404": { $ref: '#/components/responses/NotFound' }
 
   /api/v1/consents:
@@ -438,15 +436,21 @@ components:
     ValidationError:
       type: object
       properties:
-        detail:
-          type: string
-          example: "Validation error"
         errors:
           type: array
+          description: Ошибки валидации ответов
           items:
             type: object
             properties:
-              field: { type: string }
+              question: { type: string }
+              message: { type: string }
+        document_errors:
+          type: array
+          description: Ошибки по документам (если есть)
+          items:
+            type: object
+            properties:
+              code: { type: string }
               message: { type: string }
 
     LoginIn:
@@ -472,87 +476,91 @@ components:
           type: string
           enum: [web, telegram]
 
-    SurveyOut:
+    OptionOut:
       type: object
       properties:
-        id: { type: string }
-        title: { type: string }
-        questions:
-          type: array
-          items:
-            $ref: '#/components/schemas/Question'
+        value: { type: string }
+        label: { type: string }
+        order: { type: integer }
 
-    Question:
+    QuestionOut:
       type: object
       properties:
         id: { type: integer }
+        code: { type: string }
         type:
           type: string
-          enum: [single, multi, text, number, date, file]
-        text: { type: string }
+          enum: [text, number, date, select_one, select_many, yes_no, file]
+        label: { type: string }
         required: { type: boolean }
+        payload: { type: object }
         options:
           type: array
-          items:
-            type: object
-            properties:
-              id: { type: integer }
-              text: { type: string }
+          items: { $ref: '#/components/schemas/OptionOut' }
 
-    ApplicationDraftPatch:
+    StepOut:
       type: object
-      required: [stage_number, fields]
       properties:
-        stage_number: { type: integer, minimum: 0 }
-        fields:
+        id: { type: integer }
+        code: { type: string }
+        title: { type: string }
+        order: { type: integer }
+        questions:
           type: array
-          items:
-            $ref: '#/components/schemas/ApplicationFieldIn'
+          items: { $ref: '#/components/schemas/QuestionOut' }
 
-    ApplicationFieldIn:
+    SurveyOut:
       type: object
-      required: [name, value, type]
       properties:
-        name: { type: string, example: "surname" }
-        type:
+        id: { type: integer }
+        code: { type: string }
+        title: { type: string }
+        version: { type: integer }
+        is_active: { type: boolean }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/StepOut' }
+
+    AnswerPatchItem:
+      type: object
+      required: [question_code, value]
+      properties:
+        question_code: { type: string }
+        value: {}
+
+    ApplicationDraftPatchIn:
+      type: object
+      properties:
+        step_code:
           type: string
-          enum: [text, number, date, bool, single, multi, file]
-        value:
-          description: Универсальное поле значения
-          oneOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: array
-              items: { type: string }
+          description: Принудительно сделать шаг текущим
+        answers:
+          type: array
+          items: { $ref: '#/components/schemas/AnswerPatchItem' }
 
     ApplicationDraftOut:
       type: object
       properties:
         public_id: { type: string, format: uuid }
-        current_stage: { type: integer }
+        current_step:
+          oneOf:
+            - $ref: '#/components/schemas/StepOut'
+            - type: 'null'
+        answers:
+          type: object
+          additionalProperties: {}
+
+    ApplicationNextOut:
+      allOf:
+        - $ref: '#/components/schemas/ApplicationDraftOut'
+
+    ApplicationSubmitOut:
+      type: object
+      properties:
+        public_id: { type: string, format: uuid }
         status:
           type: string
           enum: [draft, submitted, under_review, approved, rejected]
-        fields:
-          type: array
-          items:
-            $ref: '#/components/schemas/ApplicationFieldOut'
-
-    ApplicationFieldOut:
-      type: object
-      properties:
-        name: { type: string }
-        type:
-          type: string
-          enum: [text, number, date, bool, single, multi, file]
-        value:
-          oneOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: array
-              items: { type: string }
 
     ApplicationOut:
       type: object
@@ -562,9 +570,17 @@ components:
         status:
           type: string
           enum: [draft, submitted, under_review, approved, rejected]
-        applicant_type: { type: string }
         created_at: { type: string, format: date-time }
         submitted_at: { type: string, format: date-time, nullable: true }
+        survey_code: { type: string }
+        applicant_name: { type: string, nullable: true }
+
+    ApplicationFieldOut:
+      type: object
+      properties:
+        code: { type: string }
+        label: { type: string }
+        value: {}
 
     PresignUploadIn:
       type: object
