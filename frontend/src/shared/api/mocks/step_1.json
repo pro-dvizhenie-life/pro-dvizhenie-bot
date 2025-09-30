@@ -1,0 +1,45 @@
+{
+  "public_id": "0000-0000-0000",
+  "current_step": {
+    "id": 1,
+    "code": "personal",
+    "title": "Основные данные",
+    "order": 1,
+    "questions": [
+      { "id": 10, "code": "contact_name", "type": "text", "label": "Контактное лицо", "required": false },
+      { "id": 11, "code": "full_name", "type": "text", "label": "ФИО подопечного", "required": true },
+      { "id": 12, "code": "birth_date", "type": "date", "label": "Дата рождения подопечного", "required": true },
+      { "id": 13, "code": "city", "type": "text", "label": "Город проживания", "required": true },
+      { "id": 14, "code": "phone", "type": "text", "label": "Телефон", "required": true },
+      { "id": 15, "code": "email", "type": "text", "label": "Email", "required": true },
+      {
+        "id": 16,
+        "code": "need_help",
+        "type": "select_one",
+        "label": "Что нужно приобрести?",
+        "required": true,
+        "options": [
+          { "value": "stroller", "label": "Коляска (ТСР)" },
+          { "value": "console", "label": "Приставка" },
+          { "value": "components", "label": "Комплектующие" }
+        ]
+      },
+      { "id": 17, "code": "certificate_tsr", "type": "yes_no", "label": "Есть ли сертификат на ТСР?", "required": false },
+      { "id": 18, "code": "other_funds", "type": "yes_no", "label": "Есть ли открытые сборы в других фондах?", "required": false },
+      {
+        "id": 19,
+        "code": "consult_help",
+        "type": "select_many",
+        "label": "Нужна ли консультационная помощь?",
+        "required": false,
+        "options": [
+          { "value": "ipra", "label": "По ИПРА" },
+          { "value": "mse", "label": "По МСЭ" },
+          { "value": "sfr", "label": "По СФР" },
+          { "value": "none", "label": "Нет" }
+        ]
+      }
+    ]
+  },
+  "answers": {}
+}

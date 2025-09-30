@@ -1,0 +1,21 @@
+{
+  "public_id": "0000-0000-0000",
+  "current_step": {
+    "id": 3,
+    "code": "documents",
+    "title": "Документы и медиа",
+    "order": 3,
+    "questions": [
+      { "id": 40, "code": "gosuslugi", "type": "yes_no", "label": "Подтверждена ли запись на Госуслугах?", "required": false },
+      { "id": 41, "code": "birth_cert", "type": "file", "label": "Свидетельство о рождении (для ребёнка)", "required": false },
+      { "id": 42, "code": "passport_parent", "type": "file", "label": "Паспорт родителя/опекуна", "required": false },
+      { "id": 43, "code": "passport_child", "type": "file", "label": "Паспорт подопечного (14+ лет)", "required": false },
+      { "id": 44, "code": "ipra", "type": "file", "label": "Копия ИПРА", "required": true },
+      { "id": 45, "code": "medical_doc", "type": "file", "label": "Медицинское заключение", "required": true },
+      { "id": 46, "code": "disability", "type": "file", "label": "Справка об инвалидности", "required": true },
+      { "id": 47, "code": "snils", "type": "file", "label": "СНИЛС", "required": true },
+      { "id": 48, "code": "photos", "type": "file", "label": "Фотографии подопечного", "required": true }
+    ]
+  },
+  "answers": {}
+}

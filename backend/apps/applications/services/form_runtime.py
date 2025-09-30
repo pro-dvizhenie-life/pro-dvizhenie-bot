@@ -24,6 +24,8 @@ def _resolve_operand(value: Any, ctx: Dict[str, Any]) -> Any:
         return eval_expr(value, ctx)
     if isinstance(value, list):
         return [_resolve_operand(item, ctx) for item in value]
+    if isinstance(value, str) and value.startswith("$"):
+        return ctx.get(value[1:])
     return value
 
 
@@ -39,6 +41,15 @@ def eval_expr(expr: Any, ctx: Dict[str, Any]) -> bool:
             return all(eval_expr(item, ctx) for item in expr["all"])
         if "any" in expr:
             return any(eval_expr(item, ctx) for item in expr["any"])
+        if "and" in expr:
+            return all(eval_expr(item, ctx) for item in expr["and"])
+        if "or" in expr:
+            return any(eval_expr(item, ctx) for item in expr["or"])
+        if "not" in expr:
+            operands = expr["not"]
+            if not isinstance(operands, list):
+                operands = [operands]
+            return not any(eval_expr(item, ctx) for item in operands)
         if "var" in expr and len(expr) == 1:
             return bool(ctx.get(expr["var"]))
         if len(expr) == 1:
@@ -46,23 +57,29 @@ def eval_expr(expr: Any, ctx: Dict[str, Any]) -> bool:
             if not isinstance(operands, Iterable) or isinstance(operands, (str, bytes)):
                 operands = [operands]
             resolved = [_resolve_operand(item, ctx) for item in operands]
-            if op == "==":
+            op = op.lower()
+            if op in {"==", "eq"}:
                 return resolved[0] == resolved[1]
-            if op == "!=":
+            if op in {"!=", "neq"}:
                 return resolved[0] != resolved[1]
             if op == "in":
                 try:
                     return resolved[0] in resolved[1]
                 except TypeError:
                     return False
-            if op == ">":
+            if op in {">", "gt"}:
                 return resolved[0] > resolved[1]
-            if op == ">=":
+            if op in {">=", "gte"}:
                 return resolved[0] >= resolved[1]
-            if op == "<":
+            if op in {"<", "lt"}:
                 return resolved[0] < resolved[1]
-            if op == "<=":
+            if op in {"<=", "lte"}:
                 return resolved[0] <= resolved[1]
+            if op == "contains":  # вспомогательная операция
+                try:
+                    return resolved[1] in resolved[0]
+                except TypeError:
+                    return False
     if isinstance(expr, list):
         return all(eval_expr(item, ctx) for item in expr)
     return bool(_resolve_operand(expr, ctx))
@@ -80,6 +97,7 @@ def visible_questions(step: Step, answers: Dict[str, Any]) -> List[Question]:
     for condition in conditions:
         condition_map.setdefault(condition.question_id, []).append(condition)
     questions = list(step.questions.prefetch_related("options"))
+    questions.sort(key=lambda item: item.payload.get("order", item.id))
     visible: List[Question] = []
     for question in questions:
         required_conditions = condition_map.get(question.id)
@@ -88,6 +106,7 @@ def visible_questions(step: Step, answers: Dict[str, Any]) -> List[Question]:
             continue
         if all(eval_expr(cond.expression, answers) for cond in required_conditions):
             visible.append(question)
+    visible.sort(key=lambda item: item.payload.get("order", item.id))
     return visible
 
 

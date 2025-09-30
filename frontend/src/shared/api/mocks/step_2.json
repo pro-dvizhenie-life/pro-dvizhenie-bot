@@ -1,0 +1,23 @@
+{
+  "public_id": "0000-0000-0000",
+  "current_step": {
+    "id": 2,
+    "code": "history",
+    "title": "История подопечного",
+    "order": 2,
+    "questions": [
+      { "id": 20, "code": "diagnosis", "type": "text", "label": "Укажите диагноз", "required": true },
+      { "id": 21, "code": "health_state", "type": "text", "label": "Опишите текущее состояние здоровья", "required": true },
+      { "id": 22, "code": "diagnosis_date", "type": "date", "label": "Когда был поставлен диагноз?", "required": false },
+      { "id": 23, "code": "ipra_tsr", "type": "yes_no", "label": "Прописано ли ТСР в ИПРА?", "required": false },
+      { "id": 24, "code": "deadline", "type": "date", "label": "Есть ли сроки, к которым важно получить помощь?", "required": false },
+      { "id": 25, "code": "family_story", "type": "text", "label": "Расскажите о семье или близких", "required": false },
+      { "id": 26, "code": "motivation", "type": "text", "label": "Кто вас вдохновляет или поддерживает?", "required": false },
+      { "id": 27, "code": "hobbies", "type": "text", "label": "Чем увлекаетесь? Хобби?", "required": false },
+      { "id": 28, "code": "why_help", "type": "text", "label": "Почему нужна помощь/оборудование?", "required": true },
+      { "id": 29, "code": "video", "type": "yes_no", "label": "Готовы ли записать видео?", "required": false },
+      { "id": 30, "code": "extra", "type": "text", "label": "Хотите добавить что-то от себя?", "required": false }
+    ]
+  },
+  "answers": {}
+}
