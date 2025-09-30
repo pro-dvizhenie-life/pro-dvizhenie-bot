@@ -275,10 +275,100 @@ def validate_required(step: Step, answers: Dict[str, Any]) -> List[Dict[str, str
     return errors
 
 
-def validate_documents(survey: Survey, answers: Dict[str, Any]) -> List[Dict[str, str]]:
-    """Заглушка проверки документов."""
+def _derive_branch(application: Application, answers: Dict[str, Any]) -> Optional[str]:
+    mapping = {
+        "self": "adult",
+        "relative": "adult",
+        "parent": "child",
+        "guardian": "child",
+    }
+    applicant_type = application.applicant_type or ""
+    branch = mapping.get(applicant_type.strip())
+    if branch:
+        return branch
+    who_fills = answers.get("q_who_fills")
+    if isinstance(who_fills, str):
+        return mapping.get(who_fills.strip())
+    return None
 
-    return []
+
+def _derive_age(answers: Dict[str, Any]) -> Optional[int]:
+    dob_value = answers.get("q_dob")
+    if not dob_value:
+        return None
+    if isinstance(dob_value, date):
+        dob = dob_value
+    elif isinstance(dob_value, str):
+        try:
+            dob = datetime.strptime(dob_value, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    else:
+        return None
+    today = date.today()
+    years = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    return max(years, 0)
+
+
+def validate_documents(application: Application, answers: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Проверяет выполнение требований по документам анкеты."""
+
+    requirements = list(application.survey.doc_requirements.all())
+    if not requirements:
+        return []
+
+    from documents.models import DocumentVersion  # type: ignore
+    from documents.services import list_versions  # локальный импорт во избежание циклов
+
+    context: Dict[str, Any] = dict(answers)
+    branch = _derive_branch(application, answers)
+    if branch:
+        context.setdefault("branch", branch)
+    age = _derive_age(answers)
+    if age is not None:
+        context.setdefault("age", age)
+
+    versions = list(list_versions(application))
+    latest_by_document: Dict[int, DocumentVersion] = {}
+    for version in versions:
+        if version.document_id not in latest_by_document:
+            latest_by_document[version.document_id] = version
+
+    docs_by_code: Dict[str, List[DocumentVersion]] = {}
+    for version in latest_by_document.values():
+        if version.document.requirement_id:
+            code = version.document.requirement.code
+        else:
+            code = version.document.code or ""
+        if not code:
+            continue
+        docs_by_code.setdefault(code, []).append(version)
+
+    acceptable_statuses = {
+        DocumentVersion.Status.AVAILABLE,
+        DocumentVersion.Status.UPLOADED,
+    }
+
+    errors: List[Dict[str, str]] = []
+    for requirement in requirements:
+        expression = requirement.expression
+        required = True
+        if expression not in (None, True):
+            required = bool(eval_expr(expression, context))
+        if not required:
+            continue
+        versions_for_requirement = docs_by_code.get(requirement.code, [])
+        has_ready_version = any(
+            version.status in acceptable_statuses for version in versions_for_requirement
+        )
+        if not has_ready_version:
+            errors.append(
+                {
+                    "field": f"documents.{requirement.code}",
+                    "message": f"Документ «{requirement.label}» не загружен или ожидает проверки.",
+                }
+            )
+    return errors
 
 
 __all__ = [
