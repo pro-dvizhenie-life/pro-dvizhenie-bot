@@ -1,0 +1,36 @@
+{
+  "public_id": "0000-0000-0000",
+  "current_step": {
+    "id": 0,
+    "code": "consent",
+    "title": "Приветствие и согласие",
+    "order": 0,
+    "questions": [
+      {
+        "id": 1,
+        "code": "consent_152",
+        "type": "yes_no",
+        "label": "Согласны ли вы на обработку персональных данных (152-ФЗ)?",
+        "required": true,
+        "options": [
+          { "value": "yes", "label": "Согласен" },
+          { "value": "no", "label": "Отказываюсь" }
+        ]
+      },
+      {
+        "id": 2,
+        "code": "applicant_type",
+        "type": "select_one",
+        "label": "Кто заполняет заявку?",
+        "required": true,
+        "options": [
+          { "value": "self", "label": "Я и есть подопечный" },
+          { "value": "parent", "label": "Мать/Отец" },
+          { "value": "guardian", "label": "Опекун" },
+          { "value": "relative", "label": "Родственник" }
+        ]
+      }
+    ]
+  },
+  "answers": {}
+}
