@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpRequest
@@ -141,9 +142,94 @@ def audit(
     return log
 
 
+CONTACT_EMAIL_CODES = ("q_email",)
+CONTACT_PHONE_CODES = ("q_phone",)
+CONSENT_CODES = ("q_agree",)
+
+
+def _first_answer(answers: Dict[str, Any], codes: tuple[str, ...]) -> Optional[Any]:
+    for code in codes:
+        value = answers.get(code)
+        if value not in (None, "", []):
+            return value
+    return None
+
+
+def ensure_applicant_account(
+    application: Application,
+    answers: Dict[str, Any],
+    *,
+    request: Optional[HttpRequest] = None,
+):
+    """Обеспечивает создание/привязку пользователя к заявке по ответам анкеты."""
+
+    email_value = _first_answer(answers, CONTACT_EMAIL_CODES)
+    phone_value = _first_answer(answers, CONTACT_PHONE_CODES)
+    if not email_value or not phone_value:
+        return application.user
+
+    email = str(email_value).strip().lower()
+    phone = str(phone_value).strip()
+    User = get_user_model()
+
+    user = application.user
+    if user and user.email and user.phone:
+        # обновим email/phone при необходимости
+        updates: list[str] = []
+        if user.email != email and not User.objects.filter(email=email).exclude(pk=user.pk).exists():
+            user.email = email
+            updates.append("email")
+        if user.phone != phone and not User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
+            user.phone = phone
+            updates.append("phone")
+        if updates:
+            user.save(update_fields=updates)
+    else:
+        # Пытаемся найти существующего пользователя
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(phone=phone)
+            except User.DoesNotExist:
+                user = User.objects.create_user(email=email, phone=phone, password=None)
+            else:
+                # найден по телефону — обновим email, если свободен
+                if user.email != email and not User.objects.filter(email=email).exclude(pk=user.pk).exists():
+                    user.email = email
+                    user.save(update_fields=["email"])
+        else:
+            # найден по email — обновим телефон, если свободен
+            if user.phone != phone and not User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
+                user.phone = phone
+                user.save(update_fields=["phone"])
+
+    if user and application.user_id != user.pk:
+        application.user = user
+        application.save(update_fields=["user", "updated_at"])
+
+    if user and _first_answer(answers, CONSENT_CODES) is True:
+        existing = DataConsent.objects.filter(
+            user=user,
+            application=application,
+            consent_type=DataConsent.CType.PDN_152,
+        ).first()
+        if not existing or not existing.is_given:
+            record_consent(
+                user=user,
+                application=application,
+                consent_type=DataConsent.CType.PDN_152,
+                is_given=True,
+                ip_address=None,
+            )
+
+    return user
+
+
 __all__ = [
     "change_status",
     "add_comment",
     "record_consent",
+    "ensure_applicant_account",
     "audit",
 ]

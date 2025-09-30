@@ -1,0 +1,1434 @@
+[
+  {
+    "model": "applications.survey",
+    "pk": 1,
+    "fields": {
+      "code": "default",
+      "title": "Анкета фонда Движение Жизни",
+      "version": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "applications.step",
+    "pk": 1,
+    "fields": {
+      "survey": 1,
+      "code": "s0_intro",
+      "title": "Приветствие и согласие",
+      "order": 0
+    }
+  },
+  {
+    "model": "applications.step",
+    "pk": 2,
+    "fields": {
+      "survey": 1,
+      "code": "s1_basic",
+      "title": "Основные данные",
+      "order": 1
+    }
+  },
+  {
+    "model": "applications.step",
+    "pk": 3,
+    "fields": {
+      "survey": 1,
+      "code": "s2_story_adult",
+      "title": "История подопечного (взрослый)",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.step",
+    "pk": 4,
+    "fields": {
+      "survey": 1,
+      "code": "s2_story_child",
+      "title": "История подопечного (ребёнок)",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.step",
+    "pk": 5,
+    "fields": {
+      "survey": 1,
+      "code": "s3_docs",
+      "title": "Документы и медиа",
+      "order": 3
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 1,
+    "fields": {
+      "step": 1,
+      "code": "q_agree",
+      "type": "boolean",
+      "label": "Подтверждаете согласие на обработку персональных данных (152-ФЗ)?",
+      "required": true,
+      "payload": {
+        "order": 10,
+        "help_text": "Без согласия продолжить анкету нельзя.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 2,
+    "fields": {
+      "step": 1,
+      "code": "q_who_fills",
+      "type": "select",
+      "label": "Кто заполняет заявку?",
+      "required": true,
+      "payload": {
+        "order": 20,
+        "help_text": "Определяет набор следующих вопросов.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 3,
+    "fields": {
+      "step": 2,
+      "code": "q_contact_name",
+      "type": "text",
+      "label": "Контактное лицо",
+      "required": true,
+      "payload": {
+        "order": 10,
+        "help_text": "Укажите, кто будет на связи с фондом.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 4,
+    "fields": {
+      "step": 2,
+      "code": "q_fullname",
+      "type": "text",
+      "label": "ФИО подопечного",
+      "required": true,
+      "payload": {
+        "order": 20,
+        "help_text": "Полностью, как в документе.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 5,
+    "fields": {
+      "step": 2,
+      "code": "q_dob",
+      "type": "date",
+      "label": "Дата рождения подопечного",
+      "required": true,
+      "payload": {
+        "order": 30,
+        "help_text": "Не может быть в будущем.",
+        "constraints": {
+          "date_not_future": true
+        }
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 6,
+    "fields": {
+      "step": 2,
+      "code": "q_city",
+      "type": "text",
+      "label": "Город проживания",
+      "required": false,
+      "payload": {
+        "order": 40,
+        "help_text": "Можно указать населённый пункт.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 7,
+    "fields": {
+      "step": 2,
+      "code": "q_phone",
+      "type": "phone",
+      "label": "Телефон для связи",
+      "required": true,
+      "payload": {
+        "order": 50,
+        "help_text": "Формат +7 ХХХ ХХХ ХХ ХХ.",
+        "constraints": {
+          "format": "phone"
+        }
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 8,
+    "fields": {
+      "step": 2,
+      "code": "q_email",
+      "type": "email",
+      "label": "Email",
+      "required": true,
+      "payload": {
+        "order": 60,
+        "help_text": "Используется для уведомлений.",
+        "constraints": {
+          "format": "email"
+        }
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 9,
+    "fields": {
+      "step": 2,
+      "code": "q_what_to_buy",
+      "type": "select",
+      "label": "Что нужно приобрести?",
+      "required": true,
+      "payload": {
+        "order": 70,
+        "help_text": "Выберите подходящую категорию ТСР.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 10,
+    "fields": {
+      "step": 2,
+      "code": "q_tsr_certificate_has",
+      "type": "boolean",
+      "label": "Есть ли сертификат на ТСР?",
+      "required": false,
+      "payload": {
+        "order": 80,
+        "help_text": "Отметьте «Да», если сертификат уже оформлен.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 11,
+    "fields": {
+      "step": 2,
+      "code": "q_tsr_cert_number",
+      "type": "text",
+      "label": "Номер сертификата",
+      "required": true,
+      "payload": {
+        "order": 90,
+        "help_text": "Укажите номер, ровно как в документе.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 12,
+    "fields": {
+      "step": 2,
+      "code": "q_tsr_cert_amount",
+      "type": "text",
+      "label": "Сумма по сертификату",
+      "required": true,
+      "payload": {
+        "order": 100,
+        "help_text": "Например, 150000 руб.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 13,
+    "fields": {
+      "step": 2,
+      "code": "q_tsr_cert_valid_until",
+      "type": "date",
+      "label": "Срок действия сертификата",
+      "required": true,
+      "payload": {
+        "order": 110,
+        "help_text": "Дата окончания действия сертификата.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 14,
+    "fields": {
+      "step": 2,
+      "code": "q_other_funds_active",
+      "type": "boolean",
+      "label": "Есть ли открытые сборы в других фондах?",
+      "required": false,
+      "payload": {
+        "order": 120,
+        "help_text": "Расскажите, если сбор уже ведётся.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 15,
+    "fields": {
+      "step": 2,
+      "code": "q_other_funds_details",
+      "type": "textarea",
+      "label": "Опишите сборы в других фондах",
+      "required": true,
+      "payload": {
+        "order": 130,
+        "help_text": "Название фонда, цель и ссылка.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 16,
+    "fields": {
+      "step": 2,
+      "code": "q_need_consulting",
+      "type": "multiselect",
+      "label": "Нужна ли консультационная помощь?",
+      "required": false,
+      "payload": {
+        "order": 140,
+        "help_text": "Можно выбрать несколько вариантов.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 17,
+    "fields": {
+      "step": 2,
+      "code": "q_promo_capability",
+      "type": "boolean",
+      "label": "Есть ли возможность продвигать сбор самостоятельно?",
+      "required": false,
+      "payload": {
+        "order": 150,
+        "help_text": "Например, вести соцсети или снимать видео.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 18,
+    "fields": {
+      "step": 2,
+      "code": "q_positioning_tips",
+      "type": "boolean",
+      "label": "Хотите получать советы по правильному позиционированию?",
+      "required": false,
+      "payload": {
+        "order": 160,
+        "help_text": "Будем присылать рекомендации специалистов.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 19,
+    "fields": {
+      "step": 2,
+      "code": "q_esign_ready",
+      "type": "boolean",
+      "label": "Готовы ли подписать документы электронной подписью?",
+      "required": false,
+      "payload": {
+        "order": 170,
+        "help_text": "Это ускорит оформление договора.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 20,
+    "fields": {
+      "step": 3,
+      "code": "q_diagnosis_main",
+      "type": "text",
+      "label": "Укажите диагноз",
+      "required": true,
+      "payload": {
+        "order": 10,
+        "help_text": "Кратко и по данным врача.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 21,
+    "fields": {
+      "step": 3,
+      "code": "q_health_state",
+      "type": "textarea",
+      "label": "Опишите текущее состояние здоровья и ограничения",
+      "required": true,
+      "payload": {
+        "order": 20,
+        "help_text": "Расскажите, как состояние влияет на повседневность.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 22,
+    "fields": {
+      "step": 3,
+      "code": "q_diagnosis_when",
+      "type": "text",
+      "label": "Когда был поставлен диагноз?",
+      "required": true,
+      "payload": {
+        "order": 30,
+        "help_text": "Укажите год или дату.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 23,
+    "fields": {
+      "step": 3,
+      "code": "q_tsrs_in_ipra",
+      "type": "boolean",
+      "label": "Прописано ли ТСР в медзаключении или ИПРА?",
+      "required": false,
+      "payload": {
+        "order": 40,
+        "help_text": "Если нет, расскажите почему.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 24,
+    "fields": {
+      "step": 3,
+      "code": "q_deadline_need",
+      "type": "date",
+      "label": "Есть ли важные сроки, к которым нужна помощь?",
+      "required": false,
+      "payload": {
+        "order": 50,
+        "help_text": "Например, реабилитация или соревнования.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 25,
+    "fields": {
+      "step": 3,
+      "code": "q_family_info",
+      "type": "textarea",
+      "label": "Расскажите о семье или близких",
+      "required": false,
+      "payload": {
+        "order": 60,
+        "help_text": "Кто рядом и поддерживает.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 26,
+    "fields": {
+      "step": 3,
+      "code": "q_motivation",
+      "type": "text",
+      "label": "Кто или что вас вдохновляет?",
+      "required": false,
+      "payload": {
+        "order": 70,
+        "help_text": "Можно перечислить людей или события.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 27,
+    "fields": {
+      "step": 3,
+      "code": "q_hobby",
+      "type": "text",
+      "label": "Чем вы увлекаетесь?",
+      "required": false,
+      "payload": {
+        "order": 80,
+        "help_text": "Хобби, спорт, творчество.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 28,
+    "fields": {
+      "step": 3,
+      "code": "q_achievements",
+      "type": "text",
+      "label": "Какие достижения особенно дороги?",
+      "required": false,
+      "payload": {
+        "order": 90,
+        "help_text": "Поделитесь своими победами.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 29,
+    "fields": {
+      "step": 3,
+      "code": "q_reason_need_tsr",
+      "type": "textarea",
+      "label": "Почему нужна новая коляска / приставка / комплектующие?",
+      "required": true,
+      "payload": {
+        "order": 100,
+        "help_text": "Опишите конкретные трудности.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 30,
+    "fields": {
+      "step": 3,
+      "code": "q_message_to_readers",
+      "type": "textarea",
+      "label": "Что бы вы хотели сказать людям, которые прочитают историю?",
+      "required": false,
+      "payload": {
+        "order": 110,
+        "help_text": "Можно оставить благодарность или обращение.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 31,
+    "fields": {
+      "step": 3,
+      "code": "q_difficulties_ipra_mse",
+      "type": "textarea",
+      "label": "С какими сложностями столкнулись при ИПРА или МСЭ?",
+      "required": false,
+      "payload": {
+        "order": 120,
+        "help_text": "Опишите ситуацию.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 32,
+    "fields": {
+      "step": 3,
+      "code": "q_difficulties_stage",
+      "type": "select",
+      "label": "На каком этапе возникли сложности?",
+      "required": false,
+      "payload": {
+        "order": 130,
+        "help_text": "Выберите подходящее.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 33,
+    "fields": {
+      "step": 3,
+      "code": "q_can_record_videos",
+      "type": "boolean",
+      "label": "Готовы ли записать короткое видео о своей жизни?",
+      "required": false,
+      "payload": {
+        "order": 140,
+        "help_text": "Видео помогают рассказать вашу историю.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 34,
+    "fields": {
+      "step": 3,
+      "code": "q_additional_message",
+      "type": "textarea",
+      "label": "Хотите добавить что-то от себя?",
+      "required": false,
+      "payload": {
+        "order": 150,
+        "help_text": "Любая важная деталь.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 35,
+    "fields": {
+      "step": 4,
+      "code": "q_child_diagnosis_main",
+      "type": "text",
+      "label": "Укажите диагноз ребёнка",
+      "required": true,
+      "payload": {
+        "order": 10,
+        "help_text": "По медицинским документам.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 36,
+    "fields": {
+      "step": 4,
+      "code": "q_child_health_state",
+      "type": "textarea",
+      "label": "Опишите текущее состояние ребёнка",
+      "required": true,
+      "payload": {
+        "order": 20,
+        "help_text": "Как состояние влияет на повседневную жизнь.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 37,
+    "fields": {
+      "step": 4,
+      "code": "q_child_diagnosis_when",
+      "type": "text",
+      "label": "Когда поставили диагноз?",
+      "required": true,
+      "payload": {
+        "order": 30,
+        "help_text": "Укажите год или дату.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 38,
+    "fields": {
+      "step": 4,
+      "code": "q_child_tsrs_in_ipra",
+      "type": "boolean",
+      "label": "Прописано ли ТСР в медзаключении или ИПРА?",
+      "required": false,
+      "payload": {
+        "order": 40,
+        "help_text": "Если нет — объясните в истории.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 39,
+    "fields": {
+      "step": 4,
+      "code": "q_child_deadline_need",
+      "type": "date",
+      "label": "Есть ли сроки, к которым нужна помощь?",
+      "required": false,
+      "payload": {
+        "order": 50,
+        "help_text": "Например, занятия или лечение.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 40,
+    "fields": {
+      "step": 4,
+      "code": "q_parent_family_info",
+      "type": "textarea",
+      "label": "Расскажите о семье",
+      "required": false,
+      "payload": {
+        "order": 60,
+        "help_text": "Кто входит и чем занимается.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 41,
+    "fields": {
+      "step": 4,
+      "code": "q_child_family_traditions",
+      "type": "text",
+      "label": "Есть ли семейные традиции или занятия?",
+      "required": false,
+      "payload": {
+        "order": 70,
+        "help_text": "Что объединяет вашу семью.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 42,
+    "fields": {
+      "step": 4,
+      "code": "q_child_hobby",
+      "type": "text",
+      "label": "Чем увлекается ребёнок?",
+      "required": false,
+      "payload": {
+        "order": 80,
+        "help_text": "Хобби, кружки, интересы.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 43,
+    "fields": {
+      "step": 4,
+      "code": "q_child_dream",
+      "type": "text",
+      "label": "Какая мечта у ребёнка?",
+      "required": false,
+      "payload": {
+        "order": 90,
+        "help_text": "Расскажите о важной цели.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 44,
+    "fields": {
+      "step": 4,
+      "code": "q_child_reason_need_tsr",
+      "type": "textarea",
+      "label": "Почему нужна новая коляска / приставка / комплектующие?",
+      "required": true,
+      "payload": {
+        "order": 100,
+        "help_text": "Какие задачи решит ТСР.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 45,
+    "fields": {
+      "step": 4,
+      "code": "q_child_message_to_readers",
+      "type": "textarea",
+      "label": "Что бы вы сказали читателям истории?",
+      "required": false,
+      "payload": {
+        "order": 110,
+        "help_text": "Можно обратиться от имени семьи.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 46,
+    "fields": {
+      "step": 4,
+      "code": "q_child_difficulties_ipra_mse",
+      "type": "textarea",
+      "label": "С какими сложностями столкнулись при ИПРА или МСЭ?",
+      "required": false,
+      "payload": {
+        "order": 120,
+        "help_text": "Опишите ситуацию.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 47,
+    "fields": {
+      "step": 4,
+      "code": "q_child_difficulties_stage",
+      "type": "select",
+      "label": "На каком этапе возникли сложности?",
+      "required": false,
+      "payload": {
+        "order": 130,
+        "help_text": "Выберите подходящее.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 48,
+    "fields": {
+      "step": 4,
+      "code": "q_child_can_record_videos",
+      "type": "boolean",
+      "label": "Готовы ли записать короткое видео о жизни ребёнка?",
+      "required": false,
+      "payload": {
+        "order": 140,
+        "help_text": "Видео помогают рассказать историю.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 49,
+    "fields": {
+      "step": 4,
+      "code": "q_child_additional_message",
+      "type": "textarea",
+      "label": "Хотите добавить что-то от себя?",
+      "required": false,
+      "payload": {
+        "order": 150,
+        "help_text": "Любая важная деталь.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 50,
+    "fields": {
+      "step": 5,
+      "code": "q_gosuslugi_confirmed",
+      "type": "boolean",
+      "label": "Подтверждена ли запись на Госуслугах?",
+      "required": false,
+      "payload": {
+        "order": 10,
+        "help_text": "Если да, прикрепите подтверждающий файл при наличии.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 51,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_birth_cert",
+      "type": "file_multi",
+      "label": "Свидетельство о рождении",
+      "required": false,
+      "payload": {
+        "order": 20,
+        "help_text": "Загрузите все страницы документа.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 52,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_parent_passport",
+      "type": "file_multi",
+      "label": "Паспорт родителя / опекуна",
+      "required": false,
+      "payload": {
+        "order": 30,
+        "help_text": "Первая страница и прописка.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 53,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_beneficiary_passport",
+      "type": "file_multi",
+      "label": "Паспорт подопечного",
+      "required": false,
+      "payload": {
+        "order": 40,
+        "help_text": "Для подопечных старше 14 лет.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 54,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_ipra",
+      "type": "file_multi",
+      "label": "ИПРА (все страницы)",
+      "required": false,
+      "payload": {
+        "order": 50,
+        "help_text": "Проследите за качеством сканов.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 55,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_medical_report",
+      "type": "file_multi",
+      "label": "Медицинское заключение / выписка",
+      "required": false,
+      "payload": {
+        "order": 60,
+        "help_text": "Актуальные документы из клиники.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 56,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_disability_cert",
+      "type": "file_multi",
+      "label": "Справка об инвалидности",
+      "required": false,
+      "payload": {
+        "order": 70,
+        "help_text": "Обе стороны документа.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 57,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_snils",
+      "type": "file_multi",
+      "label": "СНИЛС",
+      "required": false,
+      "payload": {
+        "order": 80,
+        "help_text": "Скан двух сторон.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
+    "pk": 58,
+    "fields": {
+      "step": 5,
+      "code": "q_doc_photos_multi",
+      "type": "file_multi",
+      "label": "Фотографии подопечного",
+      "required": false,
+      "payload": {
+        "order": 90,
+        "help_text": "2–10 качественных фото.",
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 1,
+    "fields": {
+      "question": 2,
+      "value": "self",
+      "label": "Я и есть подопечный",
+      "order": 1
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 2,
+    "fields": {
+      "question": 2,
+      "value": "parent",
+      "label": "Мать / отец",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 3,
+    "fields": {
+      "question": 2,
+      "value": "guardian",
+      "label": "Опекун",
+      "order": 3
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 4,
+    "fields": {
+      "question": 2,
+      "value": "relative",
+      "label": "Родственник",
+      "order": 4
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 5,
+    "fields": {
+      "question": 9,
+      "value": "wheelchair",
+      "label": "Коляска (ТСР)",
+      "order": 1
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 6,
+    "fields": {
+      "question": 9,
+      "value": "addon",
+      "label": "Приставка",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 7,
+    "fields": {
+      "question": 9,
+      "value": "parts",
+      "label": "Комплектующие",
+      "order": 3
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 8,
+    "fields": {
+      "question": 16,
+      "value": "ipra",
+      "label": "Да, по ИПРА",
+      "order": 1
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 9,
+    "fields": {
+      "question": 16,
+      "value": "mse",
+      "label": "Да, по МСЭ",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 10,
+    "fields": {
+      "question": 16,
+      "value": "sfr",
+      "label": "Да, по СФР",
+      "order": 3
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 11,
+    "fields": {
+      "question": 16,
+      "value": "none",
+      "label": "Нет",
+      "order": 4
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 12,
+    "fields": {
+      "question": 32,
+      "value": "clinic",
+      "label": "Поликлиника",
+      "order": 1
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 13,
+    "fields": {
+      "question": 32,
+      "value": "mse",
+      "label": "МСЭ",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 14,
+    "fields": {
+      "question": 32,
+      "value": "other",
+      "label": "Другое",
+      "order": 3
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 15,
+    "fields": {
+      "question": 47,
+      "value": "clinic",
+      "label": "Поликлиника",
+      "order": 1
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 16,
+    "fields": {
+      "question": 47,
+      "value": "mse",
+      "label": "МСЭ",
+      "order": 2
+    }
+  },
+  {
+    "model": "applications.option",
+    "pk": 17,
+    "fields": {
+      "question": 47,
+      "value": "other",
+      "label": "Другое",
+      "order": 3
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 1,
+    "fields": {
+      "survey": 1,
+      "scope": "question",
+      "expression": {
+        "neq": [
+          "$q_who_fills",
+          "self"
+        ]
+      },
+      "question": 3,
+      "from_step": null,
+      "goto_step": null
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 2,
+    "fields": {
+      "survey": 1,
+      "scope": "question",
+      "expression": {
+        "eq": [
+          "$q_tsr_certificate_has",
+          true
+        ]
+      },
+      "question": 11,
+      "from_step": null,
+      "goto_step": null
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 3,
+    "fields": {
+      "survey": 1,
+      "scope": "question",
+      "expression": {
+        "eq": [
+          "$q_tsr_certificate_has",
+          true
+        ]
+      },
+      "question": 12,
+      "from_step": null,
+      "goto_step": null
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 4,
+    "fields": {
+      "survey": 1,
+      "scope": "question",
+      "expression": {
+        "eq": [
+          "$q_tsr_certificate_has",
+          true
+        ]
+      },
+      "question": 13,
+      "from_step": null,
+      "goto_step": null
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 5,
+    "fields": {
+      "survey": 1,
+      "scope": "question",
+      "expression": {
+        "eq": [
+          "$q_other_funds_active",
+          true
+        ]
+      },
+      "question": 15,
+      "from_step": null,
+      "goto_step": null
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 6,
+    "fields": {
+      "survey": 1,
+      "scope": "step",
+      "expression": {
+        "any": [
+          {
+            "eq": [
+              "$q_who_fills",
+              "self"
+            ]
+          },
+          {
+            "eq": [
+              "$q_who_fills",
+              "relative"
+            ]
+          }
+        ]
+      },
+      "question": null,
+      "from_step": 2,
+      "goto_step": 3
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 7,
+    "fields": {
+      "survey": 1,
+      "scope": "step",
+      "expression": {
+        "any": [
+          {
+            "eq": [
+              "$q_who_fills",
+              "parent"
+            ]
+          },
+          {
+            "eq": [
+              "$q_who_fills",
+              "guardian"
+            ]
+          }
+        ]
+      },
+      "question": null,
+      "from_step": 2,
+      "goto_step": 4
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 8,
+    "fields": {
+      "survey": 1,
+      "scope": "step",
+      "expression": true,
+      "question": null,
+      "from_step": 3,
+      "goto_step": 5
+    }
+  },
+  {
+    "model": "applications.condition",
+    "pk": 9,
+    "fields": {
+      "survey": 1,
+      "scope": "step",
+      "expression": true,
+      "question": null,
+      "from_step": 4,
+      "goto_step": 5
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 1,
+    "fields": {
+      "survey": 1,
+      "code": "birth_cert",
+      "label": "Свидетельство о рождении",
+      "expression": {
+        "eq": [
+          "$branch",
+          "child"
+        ]
+      }
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 2,
+    "fields": {
+      "survey": 1,
+      "code": "parent_passport",
+      "label": "Паспорт родителя / опекуна (1-я страница + прописка)",
+      "expression": {
+        "eq": [
+          "$branch",
+          "child"
+        ]
+      }
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 3,
+    "fields": {
+      "survey": 1,
+      "code": "beneficiary_passport",
+      "label": "Паспорт подопечного (14+)",
+      "expression": {
+        "and": [
+          {
+            "eq": [
+              "$branch",
+              "adult"
+            ]
+          },
+          {
+            "gte": [
+              "$age",
+              14
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 4,
+    "fields": {
+      "survey": 1,
+      "code": "ipra",
+      "label": "ИПРА (все страницы)",
+      "expression": true
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 5,
+    "fields": {
+      "survey": 1,
+      "code": "medical_report",
+      "label": "Медицинское заключение / выписка",
+      "expression": true
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 6,
+    "fields": {
+      "survey": 1,
+      "code": "disability_cert",
+      "label": "Справка об инвалидности",
+      "expression": true
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 7,
+    "fields": {
+      "survey": 1,
+      "code": "snils",
+      "label": "СНИЛС",
+      "expression": true
+    }
+  },
+  {
+    "model": "applications.documentrequirement",
+    "pk": 8,
+    "fields": {
+      "survey": 1,
+      "code": "photos_multi",
+      "label": "Фотографии подопечного",
+      "expression": true
+    }
+  }
+]

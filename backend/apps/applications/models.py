@@ -74,13 +74,22 @@ class Question(models.Model):
     """Вопрос внутри шага анкеты."""
 
     class QType(models.TextChoices):
+        """Поддерживаемые типы вопросов (расширены под новый сценарий)."""
+
         TEXT = "text", "Текст"
-        NUMBER = "number", "Число"
+        TEXTAREA = "textarea", "Многострочный текст"
+        EMAIL = "email", "Email"
+        PHONE = "phone", "Телефон"
         DATE = "date", "Дата"
-        SELECT_ONE = "select_one", "Один из списка"
-        SELECT_MANY = "select_many", "Несколько из списка"
-        YES_NO = "yes_no", "Да/Нет"
+        BOOLEAN = "boolean", "Булево"
+        SELECT = "select", "Выбор из списка"
+        MULTISELECT = "multiselect", "Несколько из списка"
         FILE = "file", "Файл"
+        FILE_MULTI = "file_multi", "Несколько файлов"
+        NUMBER = "number", "Число"
+        SELECT_ONE = "select_one", "Один из списка (legacy)"
+        SELECT_MANY = "select_many", "Несколько из списка (legacy)"
+        YES_NO = "yes_no", "Да/Нет (legacy)"
 
     step = models.ForeignKey(
         Step,

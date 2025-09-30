@@ -94,3 +94,4 @@ package-lock.json
 *.bak
 *.tmp
 AGENTS.md
+cookies.txt
