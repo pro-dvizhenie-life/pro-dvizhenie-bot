@@ -26,6 +26,10 @@
 - `/api/v1/applications/forms/<public_id>/comments/` — чтение и добавление комментариев
 - `/api/v1/applications/admin/applications/…` — административные листинги, статусы и таймлайн
 - `/api/v1/applications/admin/export.csv` — потоковый экспорт данных
+- `/api/v1/documents/uploads/` — выдача presigned-подписей на загрузку файлов
+- `/api/v1/documents/uploads/<version_id>/complete/` — фиксация завершённой загрузки
+- `/api/v1/documents/applications/<public_id>/` — список документов заявки
+- `/api/v1/documents/<document_id>/` — архивирование/удаление документа
 
 ## Настройка окружения
 - Скопируйте `.env.example` в `.env` и заполните переменные:
@@ -35,6 +39,9 @@
     создание не требуется.
   - `DJANGO_SUPERUSER_PHONE` — обязателен, так как телефон для пользователей уникальный и
     не может быть пустым.
+  - `DOCUMENTS_STORAGE_*` — параметры доступа к S3/MinIO (bucket, endpoint, ключи, таймауты).
+  - `DOCUMENTS_ALLOWED_CONTENT_TYPES`, `DOCUMENTS_MAX_FILE_SIZE` — опциональные ограничения
+    на типы и размер загружаемых файлов.
 
 ## Запуск приложения
 - Создайте виртуальное окружение: `python3.11 -m venv venv`.

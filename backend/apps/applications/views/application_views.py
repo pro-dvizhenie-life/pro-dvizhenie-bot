@@ -290,7 +290,7 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
     step_errors: List[Dict[str, str]] = []
     if application.current_step:
         step_errors = validate_required(application.current_step, answers)
-    document_errors = validate_documents(application.survey, answers)
+    document_errors = validate_documents(application, answers)
     errors: List[Dict[str, str]] = []
     errors.extend(step_errors)
     errors.extend(document_errors)

@@ -430,6 +430,95 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/v1/documents/uploads/:
+    post:
+      operationId: v1_documents_uploads_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentUploadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+          description: ''
+  /api/v1/documents/uploads/{version_id}/complete/:
+    post:
+      operationId: v1_documents_uploads_complete_create
+      parameters:
+      - in: path
+        name: version_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentUploadComplete'
+        required: false
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersion'
+          description: ''
+  /api/v1/documents/applications/{public_id}/:
+    get:
+      operationId: v1_documents_applications_list
+      parameters:
+      - in: path
+        name: public_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+          description: ''
+  /api/v1/documents/{document_id}/:
+    delete:
+      operationId: v1_documents_destroy
+      parameters:
+      - in: path
+        name: document_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: ''
 components:
   schemas:
     AnswerPatchItem:
@@ -715,6 +804,159 @@ components:
             $ref: '#/components/schemas/AnswerPatchItem'
         step_code:
           type: string
+    DocumentUploadRequest:
+      type: object
+      description: Параметры запроса на получение presigned-данных.
+      properties:
+        application_id:
+          type: string
+          format: uuid
+        requirement_code:
+          type: string
+        document_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        content_type:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+      required:
+      - application_id
+      - content_type
+      - filename
+      - size
+    PresignedUpload:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - method
+      - url
+    DocumentUploadResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        version_id:
+          type: string
+          format: uuid
+        upload:
+          $ref: '#/components/schemas/PresignedUpload'
+      required:
+      - document_id
+      - upload
+      - version_id
+    DocumentUploadComplete:
+      type: object
+      properties:
+        etag:
+          type: string
+        checksum:
+          type: string
+    DocumentVersionStatus:
+      type: string
+      enum:
+      - pending
+      - uploaded
+      - available
+      - rejected
+      description: |
+        * `pending` - Ожидает загрузки
+        * `uploaded` - Загружен
+        * `available` - Готов к использованию
+        * `rejected` - Отклонён
+    DocumentAntivirusStatus:
+      type: string
+      enum:
+      - pending
+      - clean
+      - infected
+      - failed
+      - skipped
+      description: |
+        * `pending` - Ожидает проверки
+        * `clean` - Проверен
+        * `infected` - Выявлено заражение
+        * `failed` - Ошибка проверки
+        * `skipped` - Проверка не выполнялась
+    DocumentVersion:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          readOnly: true
+        version_id:
+          type: string
+          format: uuid
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/DocumentVersionStatus'
+        antivirus_status:
+          $ref: '#/components/schemas/DocumentAntivirusStatus'
+        requirement_code:
+          type: string
+          nullable: true
+          readOnly: true
+        requirement_label:
+          type: string
+          nullable: true
+          readOnly: true
+        original_name:
+          type: string
+          readOnly: true
+        mime_type:
+          type: string
+          readOnly: true
+        size:
+          type: integer
+          readOnly: true
+        uploaded_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        download_url:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+      required:
+      - antivirus_status
+      - document_id
+      - mime_type
+      - original_name
+      - status
+      - version
+      - version_id
+    DocumentListResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentVersion'
+      required:
+      - documents
     Login:
       type: object
       description: Сериализатор для логина по email и паролю.

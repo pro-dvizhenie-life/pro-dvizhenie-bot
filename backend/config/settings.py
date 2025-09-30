@@ -187,3 +187,42 @@ SPECTACULAR_SETTINGS = {
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+
+def _int_from_env(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+DOCUMENTS_STORAGE = {
+    'BACKEND': os.environ.get('DOCUMENTS_STORAGE_BACKEND', 'documents.storages.S3DocumentStorage'),
+    'OPTIONS': {
+        'bucket': os.environ.get('DOCUMENTS_STORAGE_BUCKET', ''),
+        'endpoint_url': os.environ.get('DOCUMENTS_STORAGE_ENDPOINT'),
+        'region_name': os.environ.get('DOCUMENTS_STORAGE_REGION'),
+        'access_key': os.environ.get('DOCUMENTS_STORAGE_ACCESS_KEY'),
+        'secret_key': os.environ.get('DOCUMENTS_STORAGE_SECRET_KEY'),
+        'session_token': os.environ.get('DOCUMENTS_STORAGE_SESSION_TOKEN'),
+        'upload_expiration': _int_from_env('DOCUMENTS_UPLOAD_EXPIRATION', 900),
+        'download_expiration': _int_from_env('DOCUMENTS_DOWNLOAD_EXPIRATION', 900),
+    },
+}
+
+DOCUMENTS_MAX_FILE_SIZE = _int_from_env('DOCUMENTS_MAX_FILE_SIZE', 30 * 1024 * 1024)
+
+_document_types_env = os.environ.get('DOCUMENTS_ALLOWED_CONTENT_TYPES')
+if _document_types_env:
+    DOCUMENTS_ALLOWED_CONTENT_TYPES = [
+        item.strip() for item in _document_types_env.split(',') if item.strip()
+    ]
+else:
+    DOCUMENTS_ALLOWED_CONTENT_TYPES = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+    ]
