@@ -58,15 +58,19 @@ class S3DocumentStorage(AbstractDocumentStorage):
         session_token: Optional[str] = None,
         upload_expiration: int = 900,
         download_expiration: int = 900,
+        signature_version: Optional[str] = None,
+        addressing_style: Optional[str] = None,
     ) -> None:
         if not bucket:
             raise DocumentStorageError("Не указан bucket для документохранилища")
         try:
             import boto3
+            from botocore.config import Config
         except ImportError as exc:  # pragma: no cover - зависит от окружения
             raise DocumentStorageError(
                 "Требуется установить зависимость 'boto3' для работы с хранилищем"
             ) from exc
+
         session = boto3.session.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
@@ -74,7 +78,21 @@ class S3DocumentStorage(AbstractDocumentStorage):
             region_name=region_name,
         )
         self._bucket = bucket
-        self._client = session.client("s3", endpoint_url=endpoint_url, region_name=region_name)
+        config_kwargs: Dict[str, Any] = {}
+        if signature_version or addressing_style:
+            s3_options: Dict[str, Any] = {}
+            if addressing_style:
+                s3_options["addressing_style"] = addressing_style
+            config_kwargs["config"] = Config(
+                signature_version=signature_version,
+                s3=s3_options or None,
+            )
+        self._client = session.client(
+            "s3",
+            endpoint_url=endpoint_url,
+            region_name=region_name,
+            **config_kwargs,
+        )
         self._upload_expiration = upload_expiration
         self._download_expiration = download_expiration
 

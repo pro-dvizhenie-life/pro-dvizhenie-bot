@@ -210,6 +210,8 @@ DOCUMENTS_STORAGE = {
         'session_token': os.environ.get('DOCUMENTS_STORAGE_SESSION_TOKEN'),
         'upload_expiration': _int_from_env('DOCUMENTS_UPLOAD_EXPIRATION', 900),
         'download_expiration': _int_from_env('DOCUMENTS_DOWNLOAD_EXPIRATION', 900),
+        'signature_version': os.environ.get('DOCUMENTS_STORAGE_SIGNATURE_VERSION'),
+        'addressing_style': os.environ.get('DOCUMENTS_STORAGE_ADDRESSING_STYLE'),
     },
 }
 
