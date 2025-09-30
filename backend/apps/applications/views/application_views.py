@@ -33,11 +33,13 @@ from ..services.application_service import (
     add_comment,
     audit,
     change_status,
+    ensure_applicant_account,
     record_consent,
 )
 from ..services.form_runtime import (
     build_answer_dict,
     next_step,
+    validate_answer_value,
     validate_documents,
     validate_required,
     visible_questions,
@@ -109,6 +111,7 @@ def _apply_answer_patch(
         question.code: question
         for question in Question.objects.filter(step__survey=application.survey, code__in=codes)
     }
+    to_update: List[tuple[Question, Any]] = []
     errors: List[Dict[str, str]] = []
     for entry in validated:
         question = questions.get(entry["question_code"])
@@ -120,12 +123,25 @@ def _apply_answer_patch(
                 }
             )
             continue
+        normalized, validation_error = validate_answer_value(question, entry["value"])
+        if validation_error:
+            errors.append(
+                {
+                    "field": question.code,
+                    "message": validation_error,
+                }
+            )
+            continue
+        to_update.append((question, normalized))
+    if errors:
+        return errors
+    for question, value in to_update:
         Answer.objects.update_or_create(
             application=application,
             question=question,
-            defaults={"value": entry["value"]},
+            defaults={"value": value},
         )
-    return errors
+    return []
 
 
 def _set_current_step(application: Application, step_code: Optional[str]) -> None:
@@ -222,6 +238,7 @@ def patch_draft(request, public_id: uuid.UUID) -> Response:
     if step_code:
         _set_current_step(application, step_code)
     answers = build_answer_dict(application)
+    ensure_applicant_account(application, answers, request=request)
     payload = _serialize_application(application, answers)
     serializer = DraftOutSerializer(payload)
     return Response(serializer.data)
@@ -239,6 +256,11 @@ def post_next(request, public_id: uuid.UUID) -> Response:
         if errors:
             return _validation_error(errors)
     answers = build_answer_dict(application)
+    ensure_applicant_account(application, answers, request=request)
+    if application.current_step:
+        required_errors = validate_required(application.current_step, answers)
+        if required_errors:
+            return _validation_error(required_errors)
     upcoming = next_step(application.survey, application.current_step, answers)
     application.current_step = upcoming
     _update_stage_from_step(application)
@@ -264,6 +286,7 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
         if errors:
             return _validation_error(errors)
     answers = build_answer_dict(application)
+    ensure_applicant_account(application, answers, request=request)
     step_errors: List[Dict[str, str]] = []
     if application.current_step:
         step_errors = validate_required(application.current_step, answers)

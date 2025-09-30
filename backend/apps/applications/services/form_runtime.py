@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional
+import re
+from datetime import date, datetime
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from ..models import Application, Condition, Question, Step, Survey
 
@@ -110,6 +112,131 @@ def visible_questions(step: Step, answers: Dict[str, Any]) -> List[Question]:
     return visible
 
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PHONE_RE = re.compile(r"^\+7\d{10}$")
+
+
+def _option_values(question: Question) -> Sequence[str]:
+    return list(question.options.values_list("value", flat=True))
+
+
+def _validate_select(question: Question, raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    if raw_value in (None, ""):
+        return raw_value, None
+    if not isinstance(raw_value, str):
+        return None, "Ожидается строковое значение."
+    allowed = set(_option_values(question))
+    if raw_value not in allowed:
+        return None, "Недопустимое значение."
+    return raw_value, None
+
+
+def _validate_multiselect(question: Question, raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    if raw_value in (None, []):
+        return [], None
+    if not isinstance(raw_value, (list, tuple)):
+        return None, "Ожидается список значений."
+    allowed = set(_option_values(question))
+    cleaned: List[str] = []
+    for item in raw_value:
+        if not isinstance(item, str):
+            return None, "Коды вариантов должны быть строками."
+        if item not in allowed:
+            return None, "Недопустимое значение в списке."
+        if item not in cleaned:
+            cleaned.append(item)
+    return cleaned, None
+
+
+def _validate_boolean(raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    if raw_value in (None, ""):
+        return None, None
+    if isinstance(raw_value, bool):
+        return raw_value, None
+    if isinstance(raw_value, str):
+        lowered = raw_value.strip().lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True, None
+        if lowered in {"false", "0", "no", "off"}:
+            return False, None
+    return None, "Ожидается булево значение."
+
+
+def _validate_string(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
+    if raw_value in (None, ""):
+        return raw_value, None
+    if not isinstance(raw_value, str):
+        return None, "Ожидается текстовая строка."
+    return raw_value.strip(), None
+
+
+def _validate_email(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
+    value, error = _validate_string(raw_value)
+    if error or value in (None, ""):
+        return value, error
+    if not EMAIL_RE.match(value):
+        return None, "Некорректный формат email."
+    return value, None
+
+
+def _validate_phone(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
+    value, error = _validate_string(raw_value)
+    if error or value in (None, ""):
+        return value, error
+    if not PHONE_RE.match(value):
+        return None, "Некорректный формат телефона."
+    return value, None
+
+
+def _validate_date(raw_value: Any, constraints: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
+    if raw_value in (None, ""):
+        return raw_value, None
+    if not isinstance(raw_value, str):
+        return None, "Ожидается строка в формате YYYY-MM-DD."
+    try:
+        parsed = datetime.strptime(raw_value, "%Y-%m-%d").date()
+    except ValueError:
+        return None, "Некорректный формат даты."
+    if constraints.get("date_not_future") and parsed > date.today():
+        return None, "Дата не может быть в будущем."
+    return parsed.isoformat(), None
+
+
+def validate_answer_value(question: Question, raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    """Проверяет соответствие ответа типу вопроса и ограничениям."""
+
+    payload = question.payload or {}
+    constraints = payload.get("constraints") or {}
+    qtype = question.type
+
+    if qtype in {Question.QType.TEXT, Question.QType.TEXTAREA}:
+        return _validate_string(raw_value)
+    if qtype == Question.QType.EMAIL:
+        return _validate_email(raw_value)
+    if qtype == Question.QType.PHONE:
+        return _validate_phone(raw_value)
+    if qtype == Question.QType.DATE:
+        return _validate_date(raw_value, constraints)
+    if qtype in {Question.QType.BOOLEAN, Question.QType.YES_NO}:
+        return _validate_boolean(raw_value)
+    if qtype in {Question.QType.SELECT, Question.QType.SELECT_ONE}:
+        return _validate_select(question, raw_value)
+    if qtype in {Question.QType.MULTISELECT, Question.QType.SELECT_MANY}:
+        return _validate_multiselect(question, raw_value)
+    if qtype == Question.QType.NUMBER:
+        if raw_value in (None, ""):
+            return raw_value, None
+        if isinstance(raw_value, (int, float)):
+            return raw_value, None
+        try:
+            return float(raw_value), None
+        except (TypeError, ValueError):
+            return None, "Ожидается числовое значение."
+    if qtype in {Question.QType.FILE, Question.QType.FILE_MULTI}:
+        return raw_value, None
+    return raw_value, None
+
+
 def next_step(
     survey: Survey,
     current_step: Optional[Step],
@@ -157,6 +284,7 @@ def validate_documents(survey: Survey, answers: Dict[str, Any]) -> List[Dict[str
 __all__ = [
     "build_answer_dict",
     "eval_expr",
+    "validate_answer_value",
     "visible_questions",
     "next_step",
     "validate_required",
