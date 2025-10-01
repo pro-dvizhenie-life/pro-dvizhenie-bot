@@ -5,7 +5,13 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from users.views import LoginView, LogoutView, RegisterView
+from users.views import (
+    LoginView,
+    LogoutView,
+    MagicLinkLoginView,
+    MagicLinkRequestView,
+    RegisterView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -13,6 +19,16 @@ urlpatterns = [
     path("api/v1/auth/register/", RegisterView.as_view(), name="register"),
     path("api/v1/auth/login/", LoginView.as_view(), name="login"),
     path("api/v1/auth/logout/", LogoutView.as_view(), name="logout"),
+    path(
+        "api/v1/auth/magic-link/request/",
+        MagicLinkRequestView.as_view(),
+        name="magic-link-request",
+    ),
+    path(
+        "api/v1/auth/magic-link/login/",
+        MagicLinkLoginView.as_view(),
+        name="magic-link-login",
+    ),
     path(
         "api/docs/",
         SpectacularSwaggerView.as_view(url_name="schema"),

@@ -56,3 +56,15 @@ class AuthTokensSerializer(serializers.Serializer):
     access = serializers.CharField()
     refresh = serializers.CharField()
     user = UserSerializer()
+
+
+class MagicLinkLoginSerializer(serializers.Serializer):
+    """Сериализатор для входа по токену magic link."""
+
+    token = serializers.CharField()
+
+
+class MagicLinkRequestSerializer(serializers.Serializer):
+    """Запрос на отправку письма с magic link."""
+
+    email = serializers.EmailField()

@@ -1,5 +1,9 @@
 """Модели и менеджеры пользователей."""
 
+from __future__ import annotations
+
+import hashlib
+
 from config.constants import (
     USER_CHOICE_MAX_LENGTH,
     USER_EMAIL_MAX_LENGTH,
@@ -10,6 +14,7 @@ from config.constants import (
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -178,3 +183,102 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self) -> str:
         return self.email
+
+
+class MagicLinkTokenQuerySet(models.QuerySet):
+    """Дополнительные методы работы с токенами магической ссылки."""
+
+    def active(self):
+        """Фильтрует только неиспользованные и неистёкшие токены."""
+
+        now = timezone.now()
+        return self.filter(used_at__isnull=True, expires_at__gt=now)
+
+
+class MagicLinkTokenManager(models.Manager):
+    """Менеджер токенов входа по magic link."""
+
+    def get_queryset(self):
+        return MagicLinkTokenQuerySet(self.model, using=self._db)
+
+    def verify(self, raw_token: str) -> "MagicLinkToken | None":
+        """Возвращает токен, если он существует и действителен."""
+
+        if not raw_token:
+            return None
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        try:
+            token = (
+                self.get_queryset()
+                .select_related("user")
+                .get(token_hash=token_hash)
+            )
+        except MagicLinkToken.DoesNotExist:
+            return None
+        if token.used_at is not None:
+            return None
+        if token.expires_at <= timezone.now():
+            return None
+        return token
+
+
+class MagicLinkToken(models.Model):
+    """Одноразовые токены для входа пользователя по email-ссылке."""
+
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="magic_link_tokens",
+        verbose_name="Пользователь",
+    )
+    token_hash = models.CharField(
+        verbose_name="Хеш токена",
+        max_length=64,
+        unique=True,
+    )
+    created_at = models.DateTimeField(
+        verbose_name="Создан",
+        auto_now_add=True,
+    )
+    expires_at = models.DateTimeField(
+        verbose_name="Истекает",
+    )
+    used_at = models.DateTimeField(
+        verbose_name="Использован",
+        null=True,
+        blank=True,
+    )
+    last_ip = models.GenericIPAddressField(
+        verbose_name="IP при использовании",
+        null=True,
+        blank=True,
+    )
+    user_agent = models.TextField(
+        verbose_name="User-Agent",
+        null=True,
+        blank=True,
+    )
+
+    objects = MagicLinkTokenManager()
+
+    class Meta:
+        verbose_name = "Токен входа по ссылке"
+        verbose_name_plural = "Токены входа по ссылке"
+        ordering = ("-created_at",)
+
+    def mark_used(self, *, ip: str | None = None, user_agent: str | None = None) -> None:
+        """Помечает токен использованным и сохраняет метаданные."""
+
+        self.used_at = timezone.now()
+        update_fields = ["used_at"]
+        if ip:
+            self.last_ip = ip
+            update_fields.append("last_ip")
+        if user_agent:
+            self.user_agent = user_agent
+            update_fields.append("user_agent")
+        self.save(update_fields=update_fields)
+
+    def __str__(self) -> str:
+        return f"Magic link for {self.user_id} (expires {self.expires_at:%Y-%m-%d %H:%M})"

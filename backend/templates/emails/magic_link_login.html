@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <body style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2933;">
+    <p>Здравствуйте!</p>
+    <p>
+      Вы начинали заполнять заявку в проекте "{{ project_name }}" и дали
+      согласие на обработку персональных данных.
+    </p>
+    <p>
+      Чтобы вернуться к своей анкете и продолжить её заполнение (в том числе с
+      другого устройства), перейдите по ссылке ниже:
+    </p>
+    <p>
+      <a href="{{ resume_url }}" style="display: inline-block; padding: 12px 20px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;">
+        Продолжить заявку
+      </a>
+    </p>
+    <p style="margin-top: 24px; font-size: 14px; color: #52606d;">
+      Ссылка действует в течение {{ token_valid_minutes }} минут. Если вы не
+      выполняли регистрацию, просто проигнорируйте это письмо.
+    </p>
+    <p style="margin-top: 32px;">Команда "{{ project_name }}"</p>
+  </body>
+</html>

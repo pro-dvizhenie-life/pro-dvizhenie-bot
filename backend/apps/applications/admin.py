@@ -12,8 +12,8 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
-from django.urls import path, reverse
 from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from documents.models import Document, DocumentVersion

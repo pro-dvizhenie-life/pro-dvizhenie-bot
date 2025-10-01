@@ -11,12 +11,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .models import User
 from .serializers import (
     AuthTokensSerializer,
     LoginSerializer,
+    MagicLinkLoginSerializer,
+    MagicLinkRequestSerializer,
     RegisterSerializer,
     UserSerializer,
 )
+from .services import issue_magic_link_and_send_email, redeem_magic_link
 
 
 def _issue_auth_response(request, user, *, status_code: int = 200):
@@ -58,6 +62,7 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        issue_magic_link_and_send_email(user)
         return _issue_auth_response(request, user, status_code=201)
 
 
@@ -93,6 +98,55 @@ class LogoutView(APIView):
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         return response
+
+
+def _get_client_ip(request) -> str | None:
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+class MagicLinkRequestView(APIView):
+    """Отправка пользователю письма с magic link для продолжения заявки."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=MagicLinkRequestSerializer, responses={204: None})
+    def post(self, request):
+        serializer = MagicLinkRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        # Не выдаём информацию о существовании пользователя
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response(status=204)
+        issue_magic_link_and_send_email(user)
+        return Response(status=204)
+
+
+class MagicLinkLoginView(APIView):
+    """Авторизация по токену из письма (magic link)."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=MagicLinkLoginSerializer,
+        responses={200: AuthTokensSerializer, 400: OpenApiResponse(description="Ошибка")},
+    )
+    def post(self, request):
+        serializer = MagicLinkLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data["token"]
+        user = redeem_magic_link(
+            token,
+            ip=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT"),
+        )
+        if user is None:
+            return Response({"detail": "Ссылка недействительна или устарела."}, status=400)
+        return _issue_auth_response(request, user)
 
 
 class MeView(APIView):

@@ -1,7 +1,7 @@
 
 from django.core.management.base import BaseCommand
 
-from applications.fixtures.applications import run, DEFAULT_REQUIREMENTS
+from applications.fixtures.applications import DEFAULT_REQUIREMENTS, run
 
 
 class Command(BaseCommand):

@@ -248,3 +248,19 @@ DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION = _int_from_env(
     'DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION',
     DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION,
 )
+
+
+PROJECT_NAME = os.environ.get('PROJECT_NAME', 'Про Движение')
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    'no-reply@pro-dvizhenie.local',
+)
+MAGIC_LINK_TOKEN_TTL_MINUTES = _int_from_env('MAGIC_LINK_TOKEN_TTL_MINUTES', 60 * 24)
+MAGIC_LINK_EMAIL_SUBJECT = os.environ.get(
+    'MAGIC_LINK_EMAIL_SUBJECT',
+    'Продолжите заполнение заявки',
+)
+FRONTEND_APPLICATION_RESUME_URL = os.environ.get(
+    'FRONTEND_APPLICATION_RESUME_URL',
+    'http://localhost:3000/application/resume',
+)
