@@ -156,19 +156,20 @@ def submit_one(
 
     uploaded_docs: List[Dict[str, str]] = []
     if upload_files and FIXTURE_DOCS_DIR.exists() and any(FIXTURE_DOCS_DIR.iterdir()):
-        document_paths = list(FIXTURE_DOCS_DIR.iterdir())
-        for req_code in requirements:
-            upload_path = random.choice(document_paths)
-            uploaded_docs.append(
-                upload_document(
-                    session=s,
-                    url_builder=url,
-                    application_id=public_id,
-                    requirement_code=req_code,
-                    file_path=str(upload_path),
-                    verbose=verbose,
+        document_paths = [p for p in FIXTURE_DOCS_DIR.iterdir() if not p.name.startswith(".")]
+        if document_paths:
+            for req_code in requirements:
+                upload_path = random.choice(document_paths)
+                uploaded_docs.append(
+                    upload_document(
+                        session=s,
+                        url_builder=url,
+                        application_id=public_id,
+                        requirement_code=req_code,
+                        file_path=str(upload_path),
+                        verbose=verbose,
+                    )
                 )
-            )
 
     # 8) отправить заявку
     r = s.post(url(f"/api/v1/applications/{public_id}/submit/"), json={})
