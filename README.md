@@ -40,8 +40,9 @@
   - `DJANGO_SUPERUSER_PHONE` — обязателен, так как телефон для пользователей уникальный и
     не может быть пустым.
   - `MINIO_ROOT_*` и `DOCUMENTS_STORAGE_*` — параметры доступа к локальному MinIO (docker).
-  - `DOCUMENTS_ALLOWED_CONTENT_TYPES`, `DOCUMENTS_MAX_FILE_SIZE` — опциональные ограничения
-    на типы и размер загружаемых файлов.
+  - `DOCUMENTS_ALLOWED_CONTENT_TYPES`, `DOCUMENTS_ALLOWED_FILE_EXTENSIONS`, `DOCUMENTS_MAX_FILE_SIZE`,
+    `DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION` — опциональные ограничения на допустимые
+    форматы, размеры и количество загружаемых файлов.
 
 ### MinIO для хранения документов
 - Скопируйте `.env.example` в `.env`, при необходимости отредактируйте значения `MINIO_ROOT_*` и `DOCUMENTS_STORAGE_*`.

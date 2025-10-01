@@ -7,6 +7,13 @@ from pathlib import Path
 
 from django.core.management.utils import get_random_secret_key
 
+from .constants import (
+    DOCUMENTS_DEFAULT_ALLOWED_CONTENT_TYPES,
+    DOCUMENTS_DEFAULT_ALLOWED_EXTENSIONS,
+    DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION,
+    DOCUMENTS_DEFAULT_MAX_FILE_SIZE,
+)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -215,7 +222,9 @@ DOCUMENTS_STORAGE = {
     },
 }
 
-DOCUMENTS_MAX_FILE_SIZE = _int_from_env('DOCUMENTS_MAX_FILE_SIZE', 30 * 1024 * 1024)
+DOCUMENTS_MAX_FILE_SIZE = _int_from_env(
+    'DOCUMENTS_MAX_FILE_SIZE', DOCUMENTS_DEFAULT_MAX_FILE_SIZE
+)
 
 _document_types_env = os.environ.get('DOCUMENTS_ALLOWED_CONTENT_TYPES')
 if _document_types_env:
@@ -223,8 +232,19 @@ if _document_types_env:
         item.strip() for item in _document_types_env.split(',') if item.strip()
     ]
 else:
-    DOCUMENTS_ALLOWED_CONTENT_TYPES = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
+    DOCUMENTS_ALLOWED_CONTENT_TYPES = list(DOCUMENTS_DEFAULT_ALLOWED_CONTENT_TYPES)
+
+_document_extensions_env = os.environ.get('DOCUMENTS_ALLOWED_FILE_EXTENSIONS')
+if _document_extensions_env:
+    DOCUMENTS_ALLOWED_FILE_EXTENSIONS = [
+        item.strip().lower()
+        for item in _document_extensions_env.split(',')
+        if item.strip()
     ]
+else:
+    DOCUMENTS_ALLOWED_FILE_EXTENSIONS = list(DOCUMENTS_DEFAULT_ALLOWED_EXTENSIONS)
+
+DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION = _int_from_env(
+    'DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION',
+    DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION,
+)
