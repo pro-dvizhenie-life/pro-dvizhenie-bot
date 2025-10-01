@@ -43,6 +43,12 @@ class AbstractDocumentStorage:
     def delete_object(self, *, key: str) -> None:
         raise NotImplementedError
 
+    def read_object(self, *, key: str) -> bytes:
+        raise NotImplementedError
+
+    def upload_bytes(self, *, key: str, content: bytes, content_type: str) -> None:
+        raise NotImplementedError
+
 
 class S3DocumentStorage(AbstractDocumentStorage):
     """Простейшая реализация presigned-подписей для S3/MinIO."""
@@ -134,6 +140,24 @@ class S3DocumentStorage(AbstractDocumentStorage):
 
     def delete_object(self, *, key: str) -> None:
         self._client.delete_object(Bucket=self._bucket, Key=key)
+
+    def read_object(self, *, key: str) -> bytes:
+        response = self._client.get_object(Bucket=self._bucket, Key=key)
+        body = response.get("Body")
+        if body is None:
+            raise DocumentStorageError("Не удалось получить содержимое объекта")
+        return body.read()
+
+    def upload_bytes(self, *, key: str, content: bytes, content_type: str) -> None:
+        try:
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=content,
+                ContentType=content_type,
+            )
+        except Exception as exc:  # pragma: no cover - зависит от инфраструктуры
+            raise DocumentStorageError("Не удалось сохранить файл в хранилище") from exc
 
 
 __all__ = [

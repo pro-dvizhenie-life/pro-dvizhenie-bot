@@ -1,0 +1,204 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify application_filters %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+.application-add-layout {
+    display: grid;
+    gap: 24px;
+}
+.application-add-form .form-row {
+    margin-bottom: 14px;
+}
+.application-add-form .form-row label {
+    font-weight: 600;
+}
+.application-add-form .help {
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 4px;
+}
+.application-add-form .errorlist {
+    margin: 4px 0 0;
+    padding: 0;
+}
+.application-add-form .errorlist li {
+    list-style: none;
+    color: #dc3545;
+    font-size: 12px;
+}
+.application-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+.application-summary__item {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #f8f9fa;
+    padding: 10px 12px;
+}
+.application-summary__label {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 4px;
+}
+.application-summary__value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    word-break: break-word;
+}
+.application-answers {
+    display: grid;
+    gap: 20px;
+}
+.application-answers fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px 20px;
+    background: #fff;
+}
+.application-answers legend {
+    font-size: 16px;
+    font-weight: 600;
+}
+.application-answer-field {
+    margin-bottom: 16px;
+}
+.application-answer-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.application-answer-field .help {
+    color: #6c757d;
+    font-size: 12px;
+}
+.application-answer-field .errorlist li {
+    color: #dc3545;
+    font-size: 12px;
+}
+.application-documents {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px 20px;
+    background: #fff;
+}
+.application-documents__item {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+.application-documents__item label {
+    font-weight: 600;
+}
+.submit-row {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{{ media }}
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; Добавить заявку
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content" class="content">
+  <div id="content-main" class="application-add-layout">
+    <form method="post" enctype="multipart/form-data" novalidate class="application-add-form">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="module aligned">
+        {% for field in form %}
+          <div class="form-row">
+            {{ field.errors }}
+            <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}*{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}
+              <p class="help">{{ field.help_text }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if answers_form %}
+        <div class="application-answers">
+          {% for section in form_sections %}
+            <fieldset>
+              <legend>{{ section.step.title }}</legend>
+              {% for item in section.items %}
+                <div class="application-answer-field">
+                  <label>{{ item.question.label }}</label>
+                  {% if not item.is_file %}
+                    {% with field=answers_form|get_item:item.field_name %}
+                      {% if field %}
+                        {{ field.errors }}
+                        {{ field }}
+                        {% if field.help_text %}
+                          <p class="help">{{ field.help_text }}</p>
+                        {% endif %}
+                      {% endif %}
+                    {% endwith %}
+                  {% else %}
+                    <p class="help">Для этого вопроса требуется документ. Загрузите его в блоке документов ниже.</p>
+                  {% endif %}
+                  {% if item.description %}
+                    <p class="help">{{ item.description }}</p>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </fieldset>
+          {% endfor %}
+        </div>
+      {% elif survey %}
+        <p class="help">Форма анкеты недоступна из-за ошибок в основной форме.</p>
+      {% else %}
+        <p class="help">Выберите анкету и заполните обязательные поля, чтобы появилась форма вопросов.</p>
+      {% endif %}
+
+      {% if documents_requirements %}
+        <section class="application-documents">
+          <h2>Документы</h2>
+          {% for item in documents_requirements %}
+            <div class="application-documents__item">
+              <label for="id_{{ item.field_name }}">{{ item.label }}</label>
+              <input type="file" name="{{ item.field_name }}" id="id_{{ item.field_name }}">
+            </div>
+          {% endfor %}
+          <div class="application-documents__item">
+            <label for="id_document_extra_title">Дополнительный документ</label>
+            <input type="text" name="document_extra_title" id="id_document_extra_title" placeholder="Название" class="vTextField">
+            <input type="file" name="document_extra_file">
+          </div>
+        </section>
+      {% endif %}
+
+      <div class="submit-row">
+        <button type="submit" class="button default">Сохранить заявку</button>
+        <button type="submit" class="button" name="_continue">Сохранить и продолжить редактирование</button>
+        <button type="submit" class="button" name="_addanother">Сохранить и добавить другую</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

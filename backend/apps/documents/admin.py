@@ -1,18 +1,93 @@
 """Настройки административного интерфейса для документов."""
 
-import json
+from __future__ import annotations
 
-from django.contrib import admin
-from django.db.models import Count, Prefetch
-from django.urls import reverse
-from django.utils.html import format_html
+import json
+from typing import List, Optional
 
 from applications.admin import ApplicationAdmin, _answer_value  # type: ignore
-from applications.models import Answer
+from applications.models import Answer, Application, DocumentRequirement
+from django import forms
+from django.contrib import admin, messages
+from django.contrib.admin.widgets import AutocompleteSelect
+from django.core.exceptions import ValidationError
+from django.db.models import Count, Prefetch
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
+from django.utils import timezone
+from django.utils.html import format_html
 
 from .models import Document, DocumentEvent, DocumentVersion
-from .services import build_download
+from .services import build_documents_archive, build_download, ingest_admin_upload
 from .storages import DocumentStorageError
+
+
+class DocumentUploadAdminForm(forms.Form):
+    """Форма загрузки документа из админки."""
+
+    def __init__(
+        self,
+        *,
+        admin_site,
+        application_queryset,
+        requirement_queryset,
+        initial_application: Optional[Application] = None,
+        data=None,
+        files=None,
+    ) -> None:
+        super().__init__(data=data, files=files)
+        application_field = Document._meta.get_field("application")
+        requirement_field = Document._meta.get_field("requirement")
+
+        self.fields["application"] = forms.ModelChoiceField(
+            label="Заявка",
+            queryset=application_queryset,
+            widget=AutocompleteSelect(application_field, admin_site),
+        )
+        if initial_application:
+            self.fields["application"].initial = initial_application.pk
+
+        self.fields["requirement"] = forms.ModelChoiceField(
+            label="Требование",
+            queryset=requirement_queryset,
+            required=False,
+            widget=AutocompleteSelect(requirement_field, admin_site),
+        )
+        self.fields["title"] = forms.CharField(
+            label="Название документа",
+            max_length=200,
+            required=False,
+            widget=forms.TextInput(attrs={"class": "vTextField"}),
+        )
+        self.fields["notes"] = forms.CharField(
+            label="Комментарий",
+            required=False,
+            widget=forms.Textarea(attrs={"rows": 3, "class": "vLargeTextField"}),
+        )
+        self.fields["document_file"] = forms.FileField(label="Файл")
+
+        self.application_instance: Optional[Application] = initial_application
+
+    def update_requirement_queryset(self, queryset) -> None:
+        self.fields["requirement"].queryset = queryset
+
+    def clean(self):
+        cleaned = super().clean()
+        application = cleaned.get("application")
+        if application is not None:
+            self.application_instance = application
+        requirement = cleaned.get("requirement")
+        if requirement and (application is None or requirement.survey_id != application.survey_id):
+            self.add_error("requirement", "Требование не относится к выбранной заявке.")
+        title = (cleaned.get("title") or "").strip()
+        if requirement:
+            cleaned["title"] = requirement.label
+        elif not title:
+            self.add_error("title", "Укажите название документа.")
+        return cleaned
+
 
 
 class DocumentStatusFilter(admin.SimpleListFilter):
@@ -40,6 +115,7 @@ class DocumentStatusFilter(admin.SimpleListFilter):
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
     answer_codes = {"q_fullname", "q_contact_name", "q_phone"}
+    add_form_template = "admin/documents/document/add_form.html"
     list_display = (
         "application_link",
         "applicant_name",
@@ -107,7 +183,103 @@ class DocumentAdmin(admin.ModelAdmin):
             },
         ),
     )
-    actions = ("mark_archived", "mark_unarchived")
+    actions = ("mark_archived", "mark_unarchived", "download_application_archive")
+    autocomplete_fields = ("application", "requirement")
+    upload_form_class = DocumentUploadAdminForm
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "application/<path:application_id>/export/",
+                self.admin_site.admin_view(self.export_application_documents_view),
+                name="documents_application_documents_export",
+            )
+        ]
+        return custom + urls
+
+    def add_view(self, request, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        application_qs = Application.objects.select_related("survey").order_by("-created_at")
+        selected_application: Optional[Application] = None
+        if request.method == "POST":
+            app_id = request.POST.get("application")
+        else:
+            app_id = request.GET.get("application")
+        if app_id:
+            selected_application = application_qs.filter(pk=app_id).select_related("survey").first()
+
+        requirement_qs = DocumentRequirement.objects.none()
+        existing_documents: List[Document] = []
+        if selected_application:
+            requirement_qs = DocumentRequirement.objects.filter(survey=selected_application.survey).order_by("id")
+            existing_documents = list(
+                selected_application.documents.filter(is_archived=False)
+                .select_related("requirement", "current_version")
+                .order_by("requirement__id", "-updated_at")
+            )
+
+        form = self.upload_form_class(
+            admin_site=self.admin_site,
+            application_queryset=application_qs,
+            requirement_queryset=requirement_qs,
+            initial_application=selected_application,
+            data=request.POST or None,
+            files=request.FILES or None,
+        )
+        if request.method == "POST":
+            # ensure requirement choices updated even if validation fails
+            if form.application_instance:
+                req_qs = DocumentRequirement.objects.filter(survey=form.application_instance.survey).order_by("id")
+                form.update_requirement_queryset(req_qs)
+            if form.is_valid():
+                application = form.cleaned_data["application"]
+                requirement = form.cleaned_data.get("requirement")
+                title = form.cleaned_data.get("title")
+                notes = form.cleaned_data.get("notes")
+                uploaded_file = form.cleaned_data.get("document_file")
+                try:
+                    version = ingest_admin_upload(
+                        application=application,
+                        uploaded_file=uploaded_file,
+                        user=request.user,
+                        requirement=requirement,
+                        title=title,
+                        notes=notes,
+                    )
+                except ValidationError as exc:
+                    form.add_error(None, exc)
+                except DocumentStorageError as exc:
+                    form.add_error("document_file", exc)
+                else:
+                    document = version.document
+                    self.log_addition(request, document, "Initial upload")
+                    return self.response_add(request, document)
+
+        if form.application_instance and form.application_instance != selected_application:
+            selected_application = form.application_instance
+            existing_documents = list(
+                selected_application.documents.filter(is_archived=False)
+                .select_related("requirement", "current_version")
+                .order_by("requirement__id", "-updated_at")
+            )
+
+        requirements_overview = self._build_requirements_overview(selected_application, existing_documents)
+        documents_overview = self._build_existing_documents(existing_documents)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "form": form,
+            "selected_application": selected_application,
+            "requirements_overview": requirements_overview,
+            "documents_overview": documents_overview,
+            "title": "Добавить документ",
+        }
+        media = form.media
+        context["media"] = media
+        context.update(extra_context)
+        return TemplateResponse(request, self.add_form_template, context)
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -175,13 +347,15 @@ class DocumentAdmin(admin.ModelAdmin):
         versions_url = f"{reverse('admin:documents_documentversion_changelist')}?document__id__exact={obj.pk}"
         upload_url = f"{reverse('admin:documents_documentversion_add')}?document={obj.pk}"
         download = self._current_download(obj)
+        archive_url = reverse("admin:documents_application_documents_export", args=[obj.application.pk])
         parts = [
             format_html('<a class="button" href="{}" target="_blank">Заявка</a>', app_url),
+            format_html('<a class="button" href="{}">Архив заявки</a>', archive_url),
             format_html('<a class="button" href="{}" target="_blank">Версии</a>', versions_url),
             format_html('<a class="button" href="{}">Добавить версию</a>', upload_url),
         ]
         if download:
-            parts.insert(1, format_html('<a class="button" href="{}" target="_blank" rel="noopener">Скачать</a>', download.url))
+            parts.insert(2, format_html('<a class="button" href="{}" target="_blank" rel="noopener">Скачать</a>', download.url))
         return format_html(" ".join(str(item) for item in parts))
 
     quick_actions.short_description = "Быстрые действия"
@@ -203,6 +377,68 @@ class DocumentAdmin(admin.ModelAdmin):
         return format_html('<a href="{}" target="_blank" rel="noopener">Скачать ({})</a>', download.url, name)
 
     download_link.short_description = "Скачать"
+
+    def _document_status_tuple(self, document: Optional[Document]) -> tuple[str, str]:
+        if not document:
+            return "Не загружен", "status-missing"
+        version = document.current_version
+        if not version:
+            return "Ожидает загрузки", "status-pending"
+        try:
+            status_enum = DocumentVersion.Status(version.status)
+        except ValueError:
+            status_enum = DocumentVersion.Status.PENDING
+        label = version.get_status_display()
+        status_class_map = {
+            DocumentVersion.Status.AVAILABLE: "status-available",
+            DocumentVersion.Status.UPLOADED: "status-uploaded",
+            DocumentVersion.Status.PENDING: "status-pending",
+            DocumentVersion.Status.REJECTED: "status-rejected",
+        }
+        return label, status_class_map.get(status_enum, "status-info")
+
+    def _build_requirements_overview(
+        self,
+        application: Optional[Application],
+        documents: List[Document],
+    ) -> List[dict[str, object]]:
+        if not application:
+            return []
+        docs_by_requirement = {doc.requirement_id: doc for doc in documents if doc.requirement_id}
+        requirements = DocumentRequirement.objects.filter(survey=application.survey).order_by("id")
+        overview: List[dict[str, object]] = []
+        for requirement in requirements:
+            document = docs_by_requirement.get(requirement.id)
+            status_label, status_class = self._document_status_tuple(document)
+            filename = document.current_version.original_name if document and document.current_version else ""
+            overview.append(
+                {
+                    "label": requirement.label,
+                    "status_label": status_label,
+                    "status_class": status_class,
+                    "filename": filename,
+                }
+            )
+        return overview
+
+    def _build_existing_documents(self, documents: List[Document]) -> List[dict[str, object]]:
+        overview: List[dict[str, object]] = []
+        for document in documents:
+            if document.requirement_id:
+                continue
+            status_label, status_class = self._document_status_tuple(document)
+            download = self._current_download(document)
+            overview.append(
+                {
+                    "title": document.requirement.label if document.requirement else (document.title or document.code or "Документ"),
+                    "status_label": status_label,
+                    "status_class": status_class,
+                    "filename": document.current_version.original_name if document.current_version else None,
+                    "download_url": download.url if download else None,
+                    "change_url": reverse("admin:documents_document_change", args=[document.pk]),
+                }
+            )
+        return overview
 
     def document_preview(self, obj):
         download = self._current_download(obj)
@@ -282,6 +518,55 @@ class DocumentAdmin(admin.ModelAdmin):
     def mark_unarchived(self, request, queryset):
         updated = queryset.update(is_archived=False)
         self.message_user(request, f"Снята отметка об архиве у {updated} документов")
+
+    @admin.action(description="Скачать документы заявки архивом")
+    def download_application_archive(self, request, queryset):
+        application_ids = list(queryset.values_list("application_id", flat=True).distinct())
+        if not application_ids:
+            self.message_user(request, "Выберите хотя бы один документ", level=messages.WARNING)
+            return None
+        if len(application_ids) > 1:
+            self.message_user(
+                request,
+                "Выберите документы только одной заявки для подготовки архива",
+                level=messages.ERROR,
+            )
+            return None
+        document = queryset.select_related("application").first()
+        application = document.application if document else None
+        if not application:
+            self.message_user(request, "Не удалось определить заявку", level=messages.ERROR)
+            return None
+        documents_qs = Document.objects.filter(application=application, is_archived=False).select_related("current_version")
+        label = f"application_{application.public_id}_{timezone.now():%Y%m%d_%H%M%S}_documents"
+        archive = build_documents_archive(documents_qs, archive_label=label)
+        if not archive:
+            self.message_user(request, "У заявки нет доступных документов", level=messages.WARNING)
+            return None
+        response = HttpResponse(archive.content, content_type="application/zip")
+        response["Content-Disposition"] = f'attachment; filename="{archive.filename}"'
+        return response
+
+    def export_application_documents_view(self, request, application_id):
+        documents_qs = (
+            Document.objects.filter(application_id=application_id, is_archived=False)
+            .select_related("current_version", "application")
+            .order_by("-created_at")
+        )
+        document = documents_qs.first()
+        application = document.application if document else None
+        if not application:
+            self.message_user(request, "У заявки нет активных документов", level=messages.WARNING)
+            return redirect(reverse("admin:documents_document_changelist"))
+        list_url = f"{reverse('admin:documents_document_changelist')}?application__id__exact={application.pk}"
+        label = f"application_{application.public_id}_{timezone.now():%Y%m%d_%H%M%S}_documents"
+        archive = build_documents_archive(documents_qs, archive_label=label)
+        if not archive:
+            self.message_user(request, "Не удалось подготовить архив", level=messages.ERROR)
+            return redirect(list_url)
+        response = HttpResponse(archive.content, content_type="application/zip")
+        response["Content-Disposition"] = f'attachment; filename="{archive.filename}"'
+        return response
 
 
 @admin.register(DocumentVersion)
