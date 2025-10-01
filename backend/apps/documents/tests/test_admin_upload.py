@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from applications.models import Application, DocumentRequirement, Survey
+from django.contrib.admin.sites import AdminSite
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from applications.models import Application, DocumentRequirement, Survey
-from documents.models import DocumentVersion
-from django.contrib.admin.sites import AdminSite
-
 from documents.admin import DocumentUploadAdminForm
-from documents.services import ingest_admin_upload, PresignedUpload
+from documents.models import DocumentVersion
+from documents.services import PresignedUpload, ingest_admin_upload
 
 
 class DummyStorage:

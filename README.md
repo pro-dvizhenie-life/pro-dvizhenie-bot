@@ -10,6 +10,7 @@
 ### Для пользователей
 - **Пошаговое заполнение анкеты** с динамическими шагами и условиями видимости вопросов
 - **Сохранение черновиков** и возможность вернуться к заполнению позже по `session_token`
+- **Магическая ссылка для входа**: письмо с одноразовой ссылкой позволяет вернуться к своей анкете с любого устройства
 - **Регистрация и вход** по email/телефону с JWT и cookie-токенами
 - **Отправка согласий** с фиксацией IP-адреса и таймстемпа
 ### Для администраторов
@@ -20,6 +21,8 @@
 
 ## API-обзор (v1)
 - `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/logout`, `/api/v1/users/me`
+- `/api/v1/auth/magic-link/request` — запуск рассылки письма с одноразовой ссылкой
+- `/api/v1/auth/magic-link/login` — обмен токена из письма на пару JWT и cookies
 - `/api/v1/applications/forms/<survey_code>/sessions/` — создание сессии и старт черновика
 - `/api/v1/applications/forms/<public_id>/draft/` — просмотр и обновление черновика
 - `/api/v1/applications/forms/<public_id>/next/`, `/submit/`, `/consents/`
@@ -40,9 +43,13 @@
   - `DJANGO_SUPERUSER_PHONE` — обязателен, так как телефон для пользователей уникальный и
     не может быть пустым.
   - `MINIO_ROOT_*` и `DOCUMENTS_STORAGE_*` — параметры доступа к локальному MinIO (docker).
-  - `DOCUMENTS_ALLOWED_CONTENT_TYPES`, `DOCUMENTS_ALLOWED_FILE_EXTENSIONS`, `DOCUMENTS_MAX_FILE_SIZE`,
+- `DOCUMENTS_ALLOWED_CONTENT_TYPES`, `DOCUMENTS_ALLOWED_FILE_EXTENSIONS`, `DOCUMENTS_MAX_FILE_SIZE`,
     `DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION` — опциональные ограничения на допустимые
     форматы, размеры и количество загружаемых файлов.
+- `PROJECT_NAME`, `DEFAULT_FROM_EMAIL` — подпись и адрес отправителя писем с магической ссылкой.
+- `MAGIC_LINK_TOKEN_TTL_MINUTES` — время жизни токена в минутах (по умолчанию сутки).
+- `MAGIC_LINK_EMAIL_SUBJECT` — заголовок письма с магической ссылкой.
+- `FRONTEND_APPLICATION_RESUME_URL` — URL страницы, куда ведёт кнопка «Продолжить заявку».
 
 ### MinIO для хранения документов
 - Скопируйте `.env.example` в `.env`, при необходимости отредактируйте значения `MINIO_ROOT_*` и `DOCUMENTS_STORAGE_*`.
@@ -75,4 +82,5 @@
 
 ## Документация API
 - Схема доступна по `/api/schema/`, Swagger UI — `/api/docs/`, Redoc — `/api/redoc/`.
-- Актуальная спецификация хранится в `backend/docs/openapi.yml`; для обновления выполните `python backend/manage.py spectacular --file backend/docs/openapi.yml`.
+- Актуальная спецификация хранится в `backend/docs/openapi.yml`. После изменений API обновите её командой `python backend/manage.py spectacular --file backend/docs/openapi.yml`.
+- Эндпоинты магической ссылки задокументированы в секции `Authentication` (запрос письма и вход по токену).

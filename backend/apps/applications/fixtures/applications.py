@@ -6,7 +6,7 @@ import random
 import string
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List
 from uuid import uuid4
 
 import requests

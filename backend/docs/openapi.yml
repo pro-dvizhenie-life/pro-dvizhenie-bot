@@ -387,6 +387,60 @@ paths:
       responses:
         '204':
           description: Успешный выход
+  /api/v1/auth/magic-link/login/:
+    post:
+      operationId: v1_auth_magic_link_login_create
+      description: Авторизация по токену из письма (magic link).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkLogin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MagicLinkLogin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MagicLinkLogin'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+          description: ''
+        '400':
+          description: Ошибка
+  /api/v1/auth/magic-link/request/:
+    post:
+      operationId: v1_auth_magic_link_request_create
+      description: Отправка пользователю письма с magic link для продолжения заявки.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/v1/auth/register/:
     post:
       operationId: v1_auth_register_create
@@ -415,97 +469,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthTokens'
           description: ''
-  /api/v1/users/me/:
-    get:
-      operationId: v1_users_me_retrieve
-      description: Просмотр информации о текущем пользователе.
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
-  /api/v1/documents/uploads/:
-    post:
-      operationId: v1_documents_uploads_create
-      tags:
-      - v1
-      description: |
-        Возвращает параметры для загрузки документа в хранилище. Поддерживаются только
-        файлы разрешённых форматов и MIME-типов, размер каждого файла ограничен 30 МБ.
-        Для одной заявки можно хранить не более 30 активных документов (значения
-        настраиваются через переменные окружения).
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentUploadRequest'
-        required: true
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentUploadResponse'
-          description: ''
-  /api/v1/documents/uploads/{version_id}/complete/:
-    post:
-      operationId: v1_documents_uploads_complete_create
-      parameters:
-      - in: path
-        name: version_id
-        schema:
-          type: string
-          format: uuid
-        required: true
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentUploadComplete'
-        required: false
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentVersion'
-          description: ''
-  /api/v1/documents/applications/{public_id}/:
-    get:
-      operationId: v1_documents_applications_list
-      parameters:
-      - in: path
-        name: public_id
-        schema:
-          type: string
-          format: uuid
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentListResponse'
-          description: ''
   /api/v1/documents/{document_id}/:
     delete:
       operationId: v1_documents_destroy
@@ -523,6 +486,68 @@ paths:
       - {}
       responses:
         '204':
+          description: No response body
+  /api/v1/documents/applications/{public_id}/:
+    get:
+      operationId: v1_documents_applications_retrieve
+      parameters:
+      - in: path
+        name: public_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/documents/uploads/:
+    post:
+      operationId: v1_documents_uploads_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/documents/uploads/{version_id}/complete/:
+    post:
+      operationId: v1_documents_uploads_complete_create
+      parameters:
+      - in: path
+        name: version_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/me/:
+    get:
+      operationId: v1_users_me_retrieve
+      description: Просмотр информации о текущем пользователе.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
           description: ''
 components:
   schemas:
@@ -621,15 +646,6 @@ components:
           readOnly: true
         comments:
           type: array
-          description: Ошибки валидации ответов
-          items:
-            type: object
-            properties:
-              question: { type: string }
-              message: { type: string }
-        document_errors:
-          type: array
-          description: Ошибки по документам (если есть)
           items:
             type: object
             additionalProperties: {}
@@ -802,175 +818,12 @@ components:
       type: object
       description: Входные данные для обновления черновика анкеты.
       properties:
-
         answers:
           type: array
           items:
             $ref: '#/components/schemas/AnswerPatchItem'
         step_code:
           type: string
-    DocumentUploadRequest:
-      type: object
-      description: Параметры запроса на получение presigned-данных.
-      properties:
-        application_id:
-          type: string
-          format: uuid
-        requirement_code:
-          type: string
-        document_id:
-          type: string
-          format: uuid
-        filename:
-          type: string
-          description: Расширение файла должно быть разрешено (по умолчанию: pdf, jpg,
-            jpeg, png, gif, bmp, doc, docx, xls, xlsx, txt).
-        content_type:
-          type: string
-          description: Допустимые MIME-типы задаются настройкой DOCUMENTS_ALLOWED_CONTENT_TYPES
-            (по умолчанию: application/pdf, image/jpeg, image/png, image/jpg, image/gif,
-            image/bmp, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document,
-            application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
-            text/plain).
-        size:
-          type: integer
-          minimum: 1
-          description: Максимальный размер файла — 30 МБ (настраивается параметром
-            DOCUMENTS_MAX_FILE_SIZE).
-      required:
-      - application_id
-      - content_type
-      - filename
-      - size
-    PresignedUpload:
-      type: object
-      properties:
-        url:
-          type: string
-          format: uri
-        method:
-          type: string
-        fields:
-          type: object
-          additionalProperties:
-            type: string
-        headers:
-          type: object
-          additionalProperties:
-            type: string
-      required:
-      - method
-      - url
-    DocumentUploadResponse:
-      type: object
-      properties:
-        document_id:
-          type: string
-          format: uuid
-        version_id:
-          type: string
-          format: uuid
-        upload:
-          $ref: '#/components/schemas/PresignedUpload'
-      required:
-      - document_id
-      - upload
-      - version_id
-    DocumentUploadComplete:
-      type: object
-      properties:
-        etag:
-          type: string
-        checksum:
-          type: string
-    DocumentVersionStatus:
-      type: string
-      enum:
-      - pending
-      - uploaded
-      - available
-      - rejected
-      description: |
-        * `pending` - Ожидает загрузки
-        * `uploaded` - Загружен
-        * `available` - Готов к использованию
-        * `rejected` - Отклонён
-    DocumentAntivirusStatus:
-      type: string
-      enum:
-      - pending
-      - clean
-      - infected
-      - failed
-      - skipped
-      description: |
-        * `pending` - Ожидает проверки
-        * `clean` - Проверен
-        * `infected` - Выявлено заражение
-        * `failed` - Ошибка проверки
-        * `skipped` - Проверка не выполнялась
-    DocumentVersion:
-      type: object
-      properties:
-        document_id:
-          type: string
-          format: uuid
-          readOnly: true
-        version_id:
-          type: string
-          format: uuid
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/DocumentVersionStatus'
-        antivirus_status:
-          $ref: '#/components/schemas/DocumentAntivirusStatus'
-        requirement_code:
-          type: string
-          nullable: true
-          readOnly: true
-        requirement_label:
-          type: string
-          nullable: true
-          readOnly: true
-        original_name:
-          type: string
-          readOnly: true
-        mime_type:
-          type: string
-          readOnly: true
-        size:
-          type: integer
-          readOnly: true
-        uploaded_at:
-          type: string
-          format: date-time
-          nullable: true
-          readOnly: true
-        download_url:
-          type: string
-          format: uri
-          nullable: true
-          readOnly: true
-      required:
-      - antivirus_status
-      - document_id
-      - mime_type
-      - original_name
-      - status
-      - version
-      - version_id
-    DocumentListResponse:
-      type: object
-      properties:
-        documents:
-          type: array
-          items:
-            $ref: '#/components/schemas/DocumentVersion'
-      required:
-      - documents
     Login:
       type: object
       description: Сериализатор для логина по email и паролю.
@@ -984,6 +837,23 @@ components:
       required:
       - email
       - password
+    MagicLinkLogin:
+      type: object
+      description: Сериализатор для входа по токену magic link.
+      properties:
+        token:
+          type: string
+      required:
+      - token
+    MagicLinkRequest:
+      type: object
+      description: Запрос на отправку письма с magic link.
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
     NextOut:
       type: object
       description: Ответ при переходе к следующему шагу.
@@ -1201,21 +1071,35 @@ components:
     TypeEnum:
       enum:
       - text
-      - number
+      - textarea
+      - email
+      - phone
       - date
+      - boolean
+      - select
+      - multiselect
+      - file
+      - file_multi
+      - number
       - select_one
       - select_many
       - yes_no
-      - file
       type: string
       description: |-
         * `text` - Текст
-        * `number` - Число
+        * `textarea` - Многострочный текст
+        * `email` - Email
+        * `phone` - Телефон
         * `date` - Дата
-        * `select_one` - Один из списка
-        * `select_many` - Несколько из списка
-        * `yes_no` - Да/Нет
+        * `boolean` - Булево
+        * `select` - Выбор из списка
+        * `multiselect` - Несколько из списка
         * `file` - Файл
+        * `file_multi` - Несколько файлов
+        * `number` - Число
+        * `select_one` - Один из списка (legacy)
+        * `select_many` - Несколько из списка (legacy)
+        * `yes_no` - Да/Нет (legacy)
     User:
       type: object
       description: Сериализатор пользователя.
