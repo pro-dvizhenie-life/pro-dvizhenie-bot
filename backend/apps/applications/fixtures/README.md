@@ -23,9 +23,9 @@ python backend/manage.py load_default_survey
   python backend/manage.py load_fixtures --count 30
   ```
 
-- **Создать 50 заявок с загрузкой случайных тестовых документов:**
+- **Создать 30 заявок с загрузкой случайных тестовых документов:**
   ```bash
-  python backend/manage.py load_fixtures --count 50 --upload-files
+  python backend/manage.py load_fixtures --count 30 --upload-files
   ```
 
 ## Типы вопросов и формат ответов
