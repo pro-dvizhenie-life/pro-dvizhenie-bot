@@ -1,18 +1,34 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import argparse
 import mimetypes
 import random
 import string
 import time
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from uuid import uuid4
 
 import requests
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_UPLOAD = SCRIPT_DIR / "image.jpg"
+# --- Data for generation ---
+FIRST_NAMES = ["Иван", "Петр", "Сергей", "Анна", "Мария", "Елена"]
+LAST_NAMES = ["Иванов", "Петров", "Сидоров", "Кузнецова", "Попова", "Смирнова"]
+CITIES = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород"]
+DIAGNOSES = ["ДЦП, спастическая диплегия", "Спинальная мышечная атрофия", "Аутизм", "Синдром Дауна"]
+HEALTH_STATES = [
+    "Ограничена самостоятельная ходьба на длинные дистанции, требуется коляска.",
+    "Требуется постоянный уход и специализированное оборудование.",
+    "Нуждается в реабилитации и развивающих занятиях.",
+]
+REASONS_NEED_TSR = [
+    "Текущая коляска мала, вызывает дискомфорт. Нужна новая с поддержкой спины.",
+    "Необходимо специализированное кресло для правильной осанки.",
+    "Требуются ходунки для развития навыков ходьбы.",
+]
+WHAT_TO_BUY = ["wheelchair", "addon", "parts"]
+
+
 DEFAULT_REQUIREMENTS = [
     "birth_cert",
     "parent_passport",
@@ -24,20 +40,41 @@ DEFAULT_REQUIREMENTS = [
     "photos_multi",
 ]
 
+FIXTURE_DOCS_DIR = Path(__file__).resolve().parent / "documents"
+
 
 def gen_phone_ru() -> str:
     # формируем мобильный РФ формата +7XXXXXXXXXX, начинаем с "9" (как в примере API валидации)
     digits = "9" + "".join(random.choice(string.digits) for _ in range(9))
     return f"+7{digits}"
 
+
 def gen_email() -> str:
     return f"{uuid4().hex[:10]}@example.net"
+
+
+def generate_fixture_data() -> Dict[str, Any]:
+    """Generates a set of realistic data for a single application."""
+    first_name = random.choice(FIRST_NAMES)
+    last_name = random.choice(LAST_NAMES)
+    return {
+        "q_fullname": f"{last_name} {first_name}",
+        "q_dob": f"{random.randint(2010, 2020)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}",
+        "q_city": random.choice(CITIES),
+        "q_what_to_buy": random.choice(WHAT_TO_BUY),
+        "q_diagnosis_main": random.choice(DIAGNOSES),
+        "q_health_state": random.choice(HEALTH_STATES),
+        "q_diagnosis_when": f"Диагноз установлен в {random.randint(2015, 2022)} году",
+        "q_reason_need_tsr": random.choice(REASONS_NEED_TSR),
+    }
+
 
 def submit_one(
     base_url: str,
     survey_code: str,
+    data: Dict[str, Any],
     *,
-    upload_file: Optional[str] = None,
+    upload_files: bool = False,
     requirements: Iterable[str] = DEFAULT_REQUIREMENTS,
     verbose: bool = False,
 ) -> dict:
@@ -79,12 +116,12 @@ def submit_one(
     r = s.patch(
         url(f"/api/v1/applications/{public_id}/draft/patch/"),
         json={"answers": [
-            {"question_code": "q_fullname",    "value": "Иванов Иван Иванович"},
-            {"question_code": "q_dob",         "value": "2015-06-15"},
-            {"question_code": "q_city",        "value": "Тбилиси"},
-            {"question_code": "q_phone",       "value": phone},
-            {"question_code": "q_email",       "value": email},
-            {"question_code": "q_what_to_buy", "value": "wheelchair"},
+            {"question_code": "q_fullname", "value": data["q_fullname"]},
+            {"question_code": "q_dob", "value": data["q_dob"]},
+            {"question_code": "q_city", "value": data["q_city"]},
+            {"question_code": "q_phone", "value": phone},
+            {"question_code": "q_email", "value": email},
+            {"question_code": "q_what_to_buy", "value": data["q_what_to_buy"]},
         ]},
     )
     r.raise_for_status()
@@ -101,10 +138,10 @@ def submit_one(
     r = s.patch(
         url(f"/api/v1/applications/{public_id}/draft/patch/"),
         json={"answers": [
-            {"question_code": "q_diagnosis_main",  "value": "ДЦП, спастическая диплегия"},
-            {"question_code": "q_health_state",    "value": "Ограничена самостоятельная ходьба на длинные дистанции, требуется коляска."},
-            {"question_code": "q_diagnosis_when",  "value": "Диагноз установлен в 2017 году"},
-            {"question_code": "q_reason_need_tsr", "value": "Текущая коляска мала, вызывает дискомфорт. Нужна новая с поддержкой спины."},
+            {"question_code": "q_diagnosis_main", "value": data["q_diagnosis_main"]},
+            {"question_code": "q_health_state", "value": data["q_health_state"]},
+            {"question_code": "q_diagnosis_when", "value": data["q_diagnosis_when"]},
+            {"question_code": "q_reason_need_tsr", "value": data["q_reason_need_tsr"]},
         ]},
     )
     r.raise_for_status()
@@ -118,15 +155,17 @@ def submit_one(
         print("moved to s3_docs")
 
     uploaded_docs: List[Dict[str, str]] = []
-    if upload_file:
+    if upload_files and FIXTURE_DOCS_DIR.exists() and any(FIXTURE_DOCS_DIR.iterdir()):
+        document_paths = list(FIXTURE_DOCS_DIR.iterdir())
         for req_code in requirements:
+            upload_path = random.choice(document_paths)
             uploaded_docs.append(
                 upload_document(
                     session=s,
                     url_builder=url,
                     application_id=public_id,
                     requirement_code=req_code,
-                    file_path=upload_file,
+                    file_path=str(upload_path),
                     verbose=verbose,
                 )
             )
@@ -218,47 +257,18 @@ def upload_document(
     return result
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Гонщик анкет Pro Dvizhenie")
-    ap.add_argument("--base-url", default="http://127.0.0.1:8000", help="Базовый URL API")
-    ap.add_argument("--survey-code", default="default", help="Код формы (survey_code)")
-    ap.add_argument("--count", type=int, default=1, help="Сколько заявок создать подряд")
-    ap.add_argument("--verbose", action="store_true", help="Подробный лог")
-    ap.add_argument(
-        "--upload-file",
-        default=str(DEFAULT_UPLOAD),
-        help="Путь к файлу, который загрузится на шаге документов (оставьте пустым, чтобы пропустить)",
-    )
-    ap.add_argument(
-        "--requirements",
-        default=",".join(DEFAULT_REQUIREMENTS),
-        help=(
-            "Список кодов требований через запятую. Одновременно загрузится один и тот же файл"
-            " для каждого кода."
-        ),
-    )
-    ap.add_argument(
-        "--skip-upload",
-        action="store_true",
-        help="Не загружать файл даже при указании пути",
-    )
-    args = ap.parse_args()
-
+def run(*, base_url: str, survey_code: str, count: int, upload_files: bool, requirements: List[str], verbose: bool):
     ok, fail = 0, 0
-    for i in range(1, args.count + 1):
+    for i in range(1, count + 1):
         try:
-            upload_path = None if args.skip_upload else args.upload_file
-            requirements = [
-                code.strip()
-                for code in (args.requirements.split(",") if args.requirements else [])
-                if code.strip()
-            ] or DEFAULT_REQUIREMENTS
+            data = generate_fixture_data()
             res = submit_one(
-                args.base_url,
-                args.survey_code,
-                upload_file=upload_path if upload_path else None,
+                base_url,
+                survey_code,
+                data,
+                upload_files=upload_files,
                 requirements=requirements,
-                verbose=args.verbose,
+                verbose=verbose,
             )
             ok += 1
             doc_info = ""
@@ -269,22 +279,19 @@ def main():
                 ]
                 doc_info = f" documents={'|'.join(doc_pairs)}"
             print(
-                f"[{i}/{args.count}] OK {res['public_id']} status={res['status']} t={res['seconds']}s"
+                f"[{i}/{count}] OK {res['public_id']} status={res['status']} t={res['seconds']}s"
                 f" phone={res['phone']} email={res['email']}{doc_info}"
             )
         except requests.HTTPError as e:
             fail += 1
             r = e.response
-            print(f"[{i}/{args.count}] FAIL HTTP {r.status_code} at {r.request.method} {r.request.url}")
+            print(f"[{i}/{count}] FAIL HTTP {r.status_code} at {r.request.method} {r.request.url}")
             try:
                 print("Body:", r.json())
             except Exception:
                 print("Body:", r.text[:500])
         except Exception as e:
             fail += 1
-            print(f"[{i}/{args.count}] FAIL {type(e).__name__}: {e}")
+            print(f"[{i}/{count}] FAIL {type(e).__name__}: {e}")
 
     print(f"\nDone. success={ok}, fail={fail}")
-
-if __name__ == "__main__":
-    main()
