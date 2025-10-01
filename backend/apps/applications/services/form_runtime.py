@@ -13,8 +13,14 @@ def build_answer_dict(application: Application) -> Dict[str, Any]:
     """Возвращает словарь ответов по кодам вопросов."""
 
     answers: Dict[str, Any] = {}
-    queryset = application.answers.select_related("question")
-    for answer in queryset:
+    prefetched = getattr(application, "_prefetched_answers", None)
+    if prefetched is not None:
+        iterable = prefetched
+    else:
+        iterable = application.answers.select_related("question")
+    for answer in iterable:
+        if not answer.question:
+            continue
         answers[answer.question.code] = answer.value
     return answers
 
