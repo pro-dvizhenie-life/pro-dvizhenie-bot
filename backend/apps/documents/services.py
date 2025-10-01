@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from applications.models import Application, DocumentRequirement
+from config.constants import (
+    DOCUMENTS_DEFAULT_ALLOWED_CONTENT_TYPES,
+    DOCUMENTS_DEFAULT_ALLOWED_EXTENSIONS,
+    DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION,
+    DOCUMENTS_DEFAULT_MAX_FILE_SIZE,
+)
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -21,13 +27,6 @@ from .storages import (
     PresignedDownload,
     PresignedUpload,
 )
-
-DEFAULT_ALLOWED_TYPES = (
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-)
-DEFAULT_MAX_SIZE = 30 * 1024 * 1024  # 30 MB
 
 _storage_instance: Optional[AbstractDocumentStorage] = None
 
@@ -64,14 +63,40 @@ def _allowed_types() -> Sequence[str]:
         parts = [part.strip() for part in allowed.split(",") if part.strip()]
         if parts:
             return tuple(parts)
-    return DEFAULT_ALLOWED_TYPES
+    return DOCUMENTS_DEFAULT_ALLOWED_CONTENT_TYPES
+
+
+def _allowed_extensions() -> Sequence[str]:
+    allowed = getattr(settings, "DOCUMENTS_ALLOWED_FILE_EXTENSIONS", None)
+    if isinstance(allowed, (list, tuple, set)) and allowed:
+        return tuple(str(item).strip().lower() for item in allowed if str(item).strip())
+    if isinstance(allowed, str) and allowed.strip():
+        parts = [part.strip().lower() for part in allowed.split(",") if part.strip()]
+        if parts:
+            return tuple(parts)
+    return DOCUMENTS_DEFAULT_ALLOWED_EXTENSIONS
 
 
 def _max_size() -> int:
     try:
-        return int(getattr(settings, "DOCUMENTS_MAX_FILE_SIZE", DEFAULT_MAX_SIZE))
+        return int(
+            getattr(settings, "DOCUMENTS_MAX_FILE_SIZE", DOCUMENTS_DEFAULT_MAX_FILE_SIZE)
+        )
     except (TypeError, ValueError):  # pragma: no cover - защитный код
-        return DEFAULT_MAX_SIZE
+        return DOCUMENTS_DEFAULT_MAX_FILE_SIZE
+
+
+def _max_documents_per_application() -> int:
+    try:
+        return int(
+            getattr(
+                settings,
+                "DOCUMENTS_MAX_DOCUMENTS_PER_APPLICATION",
+                DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION,
+            )
+        )
+    except (TypeError, ValueError):  # pragma: no cover - защитный код
+        return DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION
 
 
 def _build_storage_key(application: Application, requirement: Optional[DocumentRequirement], filename: str) -> str:
@@ -96,12 +121,31 @@ def request_upload(
     allowed_types = _allowed_types()
     if allowed_types and content_type not in allowed_types:
         raise ValidationError({"content_type": "Недопустимый MIME-тип файла."})
+    extension = Path(filename).suffix.lstrip(".").lower()
+    allowed_extensions = _allowed_extensions()
+    if not extension or (allowed_extensions and extension not in allowed_extensions):
+        raise ValidationError({"filename": "Недопустимое расширение файла."})
     max_size = _max_size()
     if size > max_size:
         raise ValidationError({"size": "Размер файла превышает допустимый лимит."})
 
+    max_documents = _max_documents_per_application()
+
     with transaction.atomic():
         if document is None:
+            active_documents_qs = Document.objects.filter(
+                application=application,
+                is_archived=False,
+            ).select_for_update()
+            if active_documents_qs.count() >= max_documents:
+                raise ValidationError(
+                    {
+                        "documents": (
+                            "Превышено допустимое количество документов для заявки. "
+                            f"Допустимо не более {max_documents}."
+                        )
+                    }
+                )
             document = Document.objects.create(
                 application=application,
                 requirement=requirement,

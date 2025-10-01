@@ -435,6 +435,11 @@ paths:
       operationId: v1_documents_uploads_create
       tags:
       - v1
+      description: |
+        Возвращает параметры для загрузки документа в хранилище. Поддерживаются только
+        файлы разрешённых форматов и MIME-типов, размер каждого файла ограничен 30 МБ.
+        Для одной заявки можно хранить не более 30 активных документов (значения
+        настраиваются через переменные окружения).
       requestBody:
         content:
           application/json:
@@ -818,11 +823,20 @@ components:
           format: uuid
         filename:
           type: string
+          description: Расширение файла должно быть разрешено (по умолчанию: pdf, jpg,
+            jpeg, png, gif, bmp, doc, docx, xls, xlsx, txt).
         content_type:
           type: string
+          description: Допустимые MIME-типы задаются настройкой DOCUMENTS_ALLOWED_CONTENT_TYPES
+            (по умолчанию: application/pdf, image/jpeg, image/png, image/jpg, image/gif,
+            image/bmp, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document,
+            application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+            text/plain).
         size:
           type: integer
           minimum: 1
+          description: Максимальный размер файла — 30 МБ (настраивается параметром
+            DOCUMENTS_MAX_FILE_SIZE).
       required:
       - application_id
       - content_type

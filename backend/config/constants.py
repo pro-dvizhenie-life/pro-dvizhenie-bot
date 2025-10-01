@@ -24,3 +24,33 @@ CONSENT_TYPE_MAX_LENGTH = 50
 AUDIT_ACTION_MAX_LENGTH = 50
 AUDIT_TABLE_MAX_LENGTH = 50
 OPTION_ORDER_DEFAULT = 0
+
+# Ограничения на загрузку документов
+DOCUMENTS_DEFAULT_MAX_FILE_SIZE = 30 * 1024 * 1024  # 30 MB
+DOCUMENTS_DEFAULT_MAX_COUNT_PER_APPLICATION = 30
+DOCUMENTS_DEFAULT_ALLOWED_CONTENT_TYPES = (
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "image/gif",
+    "image/bmp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+)
+DOCUMENTS_DEFAULT_ALLOWED_EXTENSIONS = (
+    "pdf",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "bmp",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "txt",
+)
