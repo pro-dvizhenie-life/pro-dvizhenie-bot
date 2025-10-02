@@ -1,8 +1,8 @@
 """Настройки базы данных для Telegram бота."""
 
+from django.conf import settings
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from django.conf import settings
 
 
 def init_telegram_db():

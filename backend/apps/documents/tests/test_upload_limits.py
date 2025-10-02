@@ -6,7 +6,6 @@ from applications.models import Application, DocumentRequirement, Survey
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
-
 from documents.models import Document
 from documents.services import request_upload
 

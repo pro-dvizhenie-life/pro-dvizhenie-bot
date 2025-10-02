@@ -3,6 +3,12 @@ target-version = "py311"
 extend-exclude = [
     "backend/config/settings.py",
     "*/migrations/*",
+    "venv",
+    ".venv",
+    "frontend/node_modules",
+    "node_modules",
+    "build",
+    "dist",
 ]
 
 [lint]

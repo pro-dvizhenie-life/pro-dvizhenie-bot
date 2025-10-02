@@ -4,11 +4,11 @@ Management команда для запуска Telegram бота.
 """
 
 import os
-import sys
 import signal
-from django.core.management.base import BaseCommand
-from django.conf import settings
+import sys
 
+from django.conf import settings
+from django.core.management.base import BaseCommand
 
 try:
     from ....bots.handlers.telegram_handler import telegram_bot

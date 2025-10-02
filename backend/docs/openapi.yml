@@ -15,6 +15,13 @@ paths:
           type: string
           format: uuid
         required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+        required: false
+        description: Номер страницы пагинации.
       tags:
       - v1
       security:
@@ -25,10 +32,10 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ApplicationCommentOut'
-          description: ''
+                $ref: '#/components/schemas/PaginatedApplicationCommentList'
+          description: Список комментариев с пагинацией
+        '403':
+          description: Доступ к заявке запрещён
     post:
       operationId: v1_applications_comments_create
       parameters:
@@ -62,6 +69,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApplicationCommentOut'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка валидации комментария
+        '403':
+          description: Доступ к заявке запрещён
   /api/v1/applications/{public_id}/consents/:
     post:
       operationId: v1_applications_consents_create
@@ -85,6 +100,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/DataConsent'
+        required: true
       security:
       - jwtAuth: []
       - {}
@@ -95,6 +111,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/DataConsent'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка валидации согласия
+        '403':
+          description: Доступ к заявке запрещён
   /api/v1/applications/{public_id}/draft/:
     get:
       operationId: v1_applications_draft_retrieve
@@ -117,6 +141,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/DraftOut'
           description: ''
+        '403':
+          description: Доступ к заявке запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/{public_id}/draft/patch/:
     patch:
       operationId: v1_applications_draft_patch_partial_update
@@ -140,6 +168,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedDraftPatch'
+        required: true
       security:
       - jwtAuth: []
       - {}
@@ -150,6 +179,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/DraftOut'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка валидации анкеты
+        '403':
+          description: Доступ к заявке запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/{public_id}/next/:
     post:
       operationId: v1_applications_next_create
@@ -173,6 +212,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/DraftPatch'
+        required: false
       security:
       - jwtAuth: []
       - {}
@@ -183,6 +223,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/NextOut'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка валидации ответов
+        '403':
+          description: Доступ к заявке запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/{public_id}/submit/:
     post:
       operationId: v1_applications_submit_create
@@ -206,6 +256,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/DraftPatch'
+        required: false
       security:
       - jwtAuth: []
       - {}
@@ -216,9 +267,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/SubmitResponse'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка валидации отправки анкеты
+        '403':
+          description: Доступ к заявке запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/admin/applications/:
     get:
       operationId: v1_applications_admin_applications_list
+      parameters:
+      - in: query
+        name: status
+        schema:
+          $ref: '#/components/schemas/StatusEnum'
+        required: false
+        description: Фильтрация по статусу заявки.
+      - in: query
+        name: survey
+        schema:
+          type: string
+        required: false
+        description: Фильтрация по коду анкеты.
+      - in: query
+        name: q
+        schema:
+          type: string
+        required: false
+        description: Поиск по email, телефону, значениям ответов и публичному идентификатору.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+          default: -created_at
+        required: false
+        description: |-
+          Поле сортировки, например `-created_at`.
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+        required: false
+        description: Номер страницы пагинации.
       tags:
       - v1
       security:
@@ -228,10 +323,10 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ApplicationShort'
-          description: ''
+                $ref: '#/components/schemas/PaginatedApplicationShortList'
+          description: Список заявок с пагинацией
+        '403':
+          description: Доступ запрещён
   /api/v1/applications/admin/applications/{public_id}/:
     get:
       operationId: v1_applications_admin_applications_retrieve
@@ -242,6 +337,13 @@ paths:
           type: string
           format: uuid
         required: true
+      - in: query
+        name: comments_limit
+        schema:
+          type: integer
+          minimum: 1
+        required: false
+        description: Сколько последних комментариев включать в ответ (по умолчанию 10).
       tags:
       - v1
       security:
@@ -253,6 +355,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApplicationDetail'
           description: ''
+        '403':
+          description: Доступ запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/admin/applications/{public_id}/status/:
     patch:
       operationId: v1_applications_admin_applications_status_partial_update
@@ -276,6 +382,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedApplicationStatusPatch'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -285,6 +392,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/StatusResponse'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка изменения статуса
+        '403':
+          description: Доступ запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/admin/applications/{public_id}/timeline/:
     get:
       operationId: v1_applications_admin_applications_timeline_retrieve
@@ -306,16 +423,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/TimelineResponse'
           description: ''
+        '403':
+          description: Доступ запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/applications/admin/export.csv:
     get:
       operationId: v1_applications_admin_export.csv_retrieve
+      parameters:
+      - in: query
+        name: status
+        schema:
+          $ref: '#/components/schemas/StatusEnum'
+        required: false
+        description: Фильтровать выгрузку по статусу.
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        required: false
+        description: Включить заявки, созданные начиная с даты (YYYY-MM-DD).
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        required: false
+        description: Включить заявки, созданные до даты (YYYY-MM-DD).
       tags:
       - v1
       security:
       - jwtAuth: []
       responses:
         '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
           description: CSV export of applications
+        '403':
+          description: Доступ запрещён
+  /api/v1/applications/telegram/webhook/:
+    post:
+      operationId: v1_applications_telegram_webhook_create
+      description: Приём обновлений от Telegram бота.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+      security: []
+      responses:
+        '204':
+          description: Обновление обработано
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Некорректный JSON или payload
   /api/v1/applications/forms/{survey_code}/sessions/:
     post:
       operationId: v1_applications_forms_sessions_create
@@ -338,6 +509,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/CreateSessionRequest'
+        required: false
       security:
       - jwtAuth: []
       - {}
@@ -348,6 +520,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/DraftOut'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка создания сессии
+        '404':
+          description: Анкета не найдена или неактивна
   /api/v1/auth/login/:
     post:
       operationId: v1_auth_login_create
@@ -376,6 +556,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthTokens'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Неверные учётные данные
   /api/v1/auth/logout/:
     post:
       operationId: v1_auth_logout_create
@@ -416,6 +602,10 @@ paths:
                 $ref: '#/components/schemas/AuthTokens'
           description: ''
         '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: Ошибка
   /api/v1/auth/magic-link/request/:
     post:
@@ -441,6 +631,12 @@ paths:
       responses:
         '204':
           description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка валидации запроса
   /api/v1/auth/register/:
     post:
       operationId: v1_auth_register_create
@@ -469,6 +665,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthTokens'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка регистрации
   /api/v1/documents/{document_id}/:
     delete:
       operationId: v1_documents_destroy
@@ -486,7 +688,11 @@ paths:
       - {}
       responses:
         '204':
-          description: No response body
+          description: Документ успешно архивирован
+        '403':
+          description: Доступ к документу запрещён
+        '404':
+          description: Документ не найден
   /api/v1/documents/applications/{public_id}/:
     get:
       operationId: v1_documents_applications_retrieve
@@ -504,18 +710,50 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+          description: Список документов заявки
+        '403':
+          description: Доступ к документам заявки запрещён
+        '404':
+          description: Заявка не найдена
   /api/v1/documents/uploads/:
     post:
       operationId: v1_documents_uploads_create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+        required: true
       tags:
       - v1
       security:
       - jwtAuth: []
       - {}
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+          description: Параметры для загрузки файла
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка запроса загрузки
+        '403':
+          description: Доступ к документам заявки запрещён
   /api/v1/documents/uploads/{version_id}/complete/:
     post:
       operationId: v1_documents_uploads_complete_create
@@ -526,6 +764,18 @@ paths:
           type: string
           format: uuid
         required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteUpload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CompleteUpload'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CompleteUpload'
+        required: false
       tags:
       - v1
       security:
@@ -533,7 +783,21 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersion'
+          description: Информация о завершённой версии документа
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Ошибка завершения загрузки
+        '403':
+          description: Доступ к документам заявки запрещён
+        '404':
+          description: Версия документа не найдена
   /api/v1/users/me/:
     get:
       operationId: v1_users_me_retrieve
@@ -604,6 +868,29 @@ components:
       - id
       - user_email
       - user_id
+    PaginatedApplicationCommentList:
+      type: object
+      description: Пагинированный список комментариев заявки.
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationCommentOut'
+      required:
+      - count
+      - next
+      - previous
+      - results
     ApplicationDetail:
       type: object
       description: Полная информация о заявке.
@@ -647,8 +934,7 @@ components:
         comments:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/ApplicationCommentOut'
           readOnly: true
         status_history:
           type: array
@@ -708,6 +994,29 @@ components:
       - created_at
       - public_id
       - survey_code
+    PaginatedApplicationShortList:
+      type: object
+      description: Пагинированный список заявок.
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationShort'
+      required:
+      - count
+      - next
+      - previous
+      - results
     ApplicationStatusHistory:
       type: object
       description: Сериализатор истории статусов.
@@ -810,6 +1119,11 @@ components:
         answers:
           type: object
           additionalProperties: {}
+        restart_available:
+          type: boolean
+          default: false
+        restart_url:
+          type: string
       required:
       - current_stage
       - current_step
@@ -870,6 +1184,11 @@ components:
         answers:
           type: object
           additionalProperties: {}
+        restart_available:
+          type: boolean
+          default: false
+        restart_url:
+          type: string
       required:
       - current_stage
       - current_step
@@ -1068,6 +1387,186 @@ components:
             $ref: '#/components/schemas/TimelineEvent'
       required:
       - timeline
+    ErrorDetail:
+      type: object
+      description: Поле с сообщением об ошибке.
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+      required:
+      - field
+      - message
+    ErrorResponse:
+      type: object
+      description: Сообщение об ошибке API.
+      properties:
+        detail:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+        consent_declined:
+          type: boolean
+      required:
+      - detail
+    DocumentStatusEnum:
+      enum:
+      - pending
+      - uploaded
+      - available
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Ожидает загрузки
+        * `uploaded` - Загружен
+        * `available` - Готов к использованию
+        * `rejected` - Отклонён
+    AntivirusStatusEnum:
+      enum:
+      - pending
+      - clean
+      - infected
+      - failed
+      - skipped
+      type: string
+      description: |-
+        * `pending` - Ожидает проверки
+        * `clean` - Проверен
+        * `infected` - Выявлено заражение
+        * `failed` - Ошибка проверки
+        * `skipped` - Проверка не выполнялась
+    PresignedUpload:
+      type: object
+      description: Данные для загрузки файла на внешнее хранилище.
+      properties:
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - method
+      - url
+    UploadRequest:
+      type: object
+      description: Параметры запроса на получение presigned-данных (укажите requirement_code или document_id).
+      properties:
+        application_id:
+          type: string
+          format: uuid
+        requirement_code:
+          type: string
+        document_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        content_type:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+      required:
+      - application_id
+      - content_type
+      - filename
+      - size
+    UploadResponse:
+      type: object
+      description: Данные для загрузки документа.
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        version_id:
+          type: string
+          format: uuid
+        upload:
+          $ref: '#/components/schemas/PresignedUpload'
+      required:
+      - document_id
+      - upload
+      - version_id
+    CompleteUpload:
+      type: object
+      description: Параметры завершения загрузки документа.
+      properties:
+        etag:
+          type: string
+        checksum:
+          type: string
+    DocumentVersion:
+      type: object
+      description: Информация о версии документа.
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          readOnly: true
+        version_id:
+          type: string
+          format: uuid
+          readOnly: true
+        version:
+          type: integer
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DocumentStatusEnum'
+        antivirus_status:
+          allOf:
+          - $ref: '#/components/schemas/AntivirusStatusEnum'
+        requirement_code:
+          type: string
+          nullable: true
+        requirement_label:
+          type: string
+          nullable: true
+        original_name:
+          type: string
+        mime_type:
+          type: string
+        size:
+          type: integer
+          format: int64
+        uploaded_at:
+          type: string
+          format: date-time
+          nullable: true
+        download_url:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - antivirus_status
+      - document_id
+      - download_url
+      - mime_type
+      - original_name
+      - size
+      - status
+      - version
+      - version_id
+    DocumentListResponse:
+      type: object
+      description: Список актуальных версий документов заявки.
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentVersion'
+      required:
+      - documents
     TypeEnum:
       enum:
       - text
@@ -1116,6 +1615,7 @@ components:
         phone:
           type: string
           readOnly: true
+          nullable: true
           title: Номер телефона
         role:
           allOf:

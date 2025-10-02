@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """Минимальный работающий Telegram бот для тестирования."""
 
+import asyncio
+import logging
 import os
 import sys
-import django
-import logging
-import asyncio
 from pathlib import Path
+
+import django
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
@@ -16,9 +17,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 # НАСТРОЙКА DJANGO ДО ИМПОРТА TELEGRAM
 django.setup()
 
-from django.conf import settings
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from django.conf import settings  # noqa: E402
+from telegram import Update  # noqa: E402
+from telegram.ext import Application, CommandHandler, ContextTypes  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

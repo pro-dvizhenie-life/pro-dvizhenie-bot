@@ -1,10 +1,18 @@
-from telegram import Update
-from telegram.ext import ContextTypes
 import datetime
 import logging
 
-from backend.apps.applications.bots.telegram_models import TelegramUser as User, UserState
-from backend.apps.applications.bots.database import init_telegram_db
+from telegram import Update
+from telegram.ext import ContextTypes
+
+from ..database import init_telegram_db
+from ..telegram_models import TelegramUser as User
+from ..telegram_models import UserState
+from .keyboards import (
+    applicant_status_keyboard,
+    gender_keyboard,
+    product_keyboard,
+    yes_no_keyboard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -136,14 +144,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user.state = UserState.WAITING_FOR_CONSULTATION
             save_user(user)
             await query.answer()
-            await query.edit_message_text("Нужна ли консультационная помощь?", reply_markup=consultation_keyboard())
+            await query.edit_message_text(
+                "Нужна ли вам консультационная помощь в составлении рекомендаций ИПРА, прохождении МСЭ, получении ТСР от СФР? Ответьте текстом."
+            )
     elif user.state == UserState.WAITING_FOR_CONSULTATION:
-        if data in ["CONSULT_IPRA", "CONSULT_MSE", "CONSULT_SFR", "CONSULT_NO"]:
-            user.needs_consultation = data
-            user.state = UserState.WAITING_FOR_CAN_PROMOTE
-            save_user(user)
-            await query.answer()
-            await query.edit_message_text("Есть ли возможность продвигать сбор самостоятельно?", reply_markup=yes_no_keyboard())
+        await query.edit_message_text(
+            "Напишите текстом, нужна ли консультационная помощь по ИПРА, МСЭ или ТСР от СФР."
+        )
+        await query.answer()
     elif user.state == UserState.WAITING_FOR_CAN_PROMOTE:
         if data == "YES":
             user.can_promote = True
@@ -236,7 +244,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.certificate_amount = text
         user.state = UserState.WAITING_FOR_CERTIFICATE_EXPIRY
         save_user(user)
-        await update.message.reply_text("Укажите срок действия сертификата:")
+        await update.message.reply_text(
+            "Введите дату окончания действия сертификата (ГГГГ-ММ-ДД или дд.мм.гггг):"
+        )
     elif user.state == UserState.WAITING_FOR_CERTIFICATE_EXPIRY:
         user.certificate_expiry = text
         user.state = UserState.WAITING_FOR_OTHER_FUNDRAISING
@@ -246,7 +256,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.other_fundraising_details = text
         user.state = UserState.WAITING_FOR_CONSULTATION
         save_user(user)
-        await update.message.reply_text("Нужна ли консультационная помощь?", reply_markup=consultation_keyboard())
+        await update.message.reply_text(
+            "Нужна ли вам консультационная помощь в составлении рекомендаций ИПРА, прохождении МСЭ, получении ТСР от СФР? Ответьте текстом."
+        )
+    elif user.state == UserState.WAITING_FOR_CONSULTATION:
+        user.needs_consultation = text
+        user.state = UserState.WAITING_FOR_CAN_PROMOTE
+        save_user(user)
+        await update.message.reply_text("Есть ли возможность продвигать сбор самостоятельно?", reply_markup=yes_no_keyboard())
     elif user.state == UserState.WAITING_FOR_PROMOTION_LINKS:
         user.promotion_links = text
         user.state = UserState.WAITING_FOR_POSITIONING_INFO

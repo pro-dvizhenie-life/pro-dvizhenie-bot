@@ -25,11 +25,9 @@ class UserManager(BaseUserManager):
     def _create_user(self, email: str, password: str | None, **extra_fields):
         if not email:
             raise ValueError('Необходимо указать адрес электронной почты.')
-        phone = extra_fields.get('phone')
-        if not phone:
-            raise ValueError('Необходимо указать номер телефона.')
+        phone = extra_fields.pop('phone', None)
         email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+        user = self.model(email=email, phone=phone, **extra_fields)
         if password:
             user.set_password(password)
         else:
@@ -100,7 +98,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(
         verbose_name='Номер телефона',
         max_length=USER_PHONE_MAX_LENGTH,
-        unique=True,
+        null=True,
+        blank=True,
     )
     role = models.CharField(
         verbose_name='Роль',
@@ -168,7 +167,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS: list[str] = ['phone']
+    REQUIRED_FIELDS: list[str] = []
 
     class Meta:
         verbose_name = 'Пользователь'

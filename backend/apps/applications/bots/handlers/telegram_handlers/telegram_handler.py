@@ -1,123 +1,111 @@
-"""Основной обработчик Telegram бота."""
+"""Telegram bot entry-point wiring scenario handlers."""
+
+from __future__ import annotations
 
 import logging
-from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    MessageHandler,
-    filters,
-    ContextTypes
-)
+from typing import TYPE_CHECKING, Optional
+
+from applications.bots.scenarios.default_scenario import DefaultScenario
 from django.conf import settings
 
-# Настройка логирования
 logger = logging.getLogger(__name__)
 
-from .help import help_command
-from .form import form_entry, handle_callback, handle_text
-from .preview import handle_preview_callback
-from .documents import handle_documents
+
+if TYPE_CHECKING:
+    from telegram.ext import ContextTypes
+
+
+def _require_ptb_components():
+    try:
+        from telegram import Update
+        from telegram.ext import (
+            Application,
+            CallbackQueryHandler,
+            CommandHandler,
+            MessageHandler,
+            filters,
+        )
+    except ImportError as exc:  # pragma: no cover - dependency absent only in tests
+        raise RuntimeError("python-telegram-bot не установлен") from exc
+    return Update, Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
+
 
 class TelegramBot:
-    def __init__(self):
-        self.token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
-        self.application = None
+    """Configures telegram-ext application and delegates to the scenario."""
 
+    def __init__(self) -> None:
+        self.token: Optional[str] = getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+        self.application = None
+        self.scenario = DefaultScenario()
         if not self.token:
             logger.warning("TELEGRAM_BOT_TOKEN не найден в настройках Django")
 
-    def setup_handlers(self):
-        """Настройка обработчиков бота."""
-
-        # 1. КОМАНДЫ
-        self.application.add_handler(CommandHandler("start", start))
-        self.application.add_handler(CommandHandler("help", help_command))
-        self.application.add_handler(CommandHandler("form", form_entry))
-        self.application.add_handler(CommandHandler("anketa", form_entry))  # Альтернативная команда
-
-        # 2. CALLBACK-ЗАПРОСЫ (нажатия на кнопки)
-        # Группируем похожие callback'ы для эффективности
-        self.application.add_handler(CallbackQueryHandler(
-            handle_callback,
-            pattern="^(YES|NO|APPLICANT_|GENDER_|PRODUCT_|CONSULT_)"
-        ))
-        self.application.add_handler(CallbackQueryHandler(
-            handle_preview_callback,
-            pattern="^(RESUME_BUTTON|RESTART_BUTTON)"
-        ))
-
-        # 3. ТЕКСТОВЫЕ СООБЩЕНИЯ (исключая команды)
-        self.application.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            handle_text
-        ))
-
-        # 4. ДОКУМЕНТЫ И ФОТО (разделяем для точности)
-        self.application.add_handler(MessageHandler(
-            filters.PHOTO,
-            handle_documents
-        ))
-        self.application.add_handler(MessageHandler(
-            filters.Document.ALL,
-            handle_documents
-        ))
-
-        # 5. ОБРАБОТЧИК ОШИБОК
+    def setup_handlers(self) -> None:
+        if self.application is None:
+            raise RuntimeError("Application instance is not initialised")
+        _, _, CallbackQueryHandler, CommandHandler, MessageHandler, filters = _require_ptb_components()
+        scenario = self.scenario
+        self.application.add_handler(CommandHandler("start", scenario.handle_start))
+        self.application.add_handler(CommandHandler("help", scenario.handle_help))
+        self.application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, scenario.handle_text)
+        )
+        self.application.add_handler(CallbackQueryHandler(scenario.handle_callback))
+        document_filters = (
+            filters.Document.ALL
+            | filters.PHOTO
+            | filters.AUDIO
+            | filters.VIDEO
+            | filters.VIDEO_NOTE
+        )
+        self.application.add_handler(MessageHandler(document_filters, scenario.handle_document))
         self.application.add_error_handler(self.error_handler)
+        logger.info("Telegram handlers configured")
 
-        logger.info("✅ Все обработчики Telegram бота настроены")
-
-    async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Глобальный обработчик ошибок бота."""
-        logger.error(f"❌ Ошибка в боте: {context.error}", exc_info=True)
-
-        # Уведомляем пользователя об ошибке
-        if update and update.effective_chat:
+    async def error_handler(self, update: object, context: "ContextTypes.DEFAULT_TYPE") -> None:
+        update_payload = update.to_dict() if hasattr(update, "to_dict") else repr(update)
+        logger.exception(
+            "Ошибка в Telegram боте: %s | update=%s",
+            getattr(context, "error", None),
+            update_payload,
+        )
+        chat = getattr(update, "effective_chat", None)
+        chat_id = getattr(chat, "id", None)
+        if chat_id:
             try:
                 await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text="😕 Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже или обратитесь в поддержку."
+                    chat_id=chat_id,
+                    text="Произошла ошибка. Попробуйте ещё раз или свяжитесь с поддержкой.",
                 )
-            except Exception as e:
-                logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
+            except Exception:  # pragma: no cover - best-effort notification
+                logger.debug("Не удалось уведомить пользователя об ошибке", exc_info=True)
 
-    def start_polling(self):
-        """Запуск бота в режиме polling."""
-        if not self.token:
-            raise ValueError("❌ TELEGRAM_BOT_TOKEN не настроен. Добавьте в settings.py")
-
-        try:
-            self.application = Application.builder().token(self.token).build()
-            self.setup_handlers()
-
-            logger.info("🚀 Telegram бот запускается в режиме polling...")
-
-            # Запускаем polling с настройками
-            self.application.run_polling(
-                drop_pending_updates=True,  # Игнорируем старые сообщения при запуске
-                allowed_updates=Update.ALL_TYPES,
-                close_loop=False  # Важно для интеграции с Django
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка при запуске бота: {e}")
-            raise
-
-    def create_webhook_app(self):
-        """
-        Создание приложения для webhook режима.
-        Для использования в production.
-        """
+    def _build_application(self) -> None:
+        _, ApplicationCls, *_ = _require_ptb_components()
         if not self.token:
             raise ValueError("TELEGRAM_BOT_TOKEN не настроен")
+        self.application = ApplicationCls.builder().token(self.token).build()
 
-        self.application = Application.builder().token(self.token).build()
+    def start_polling(self) -> None:
+        Update, *_ = _require_ptb_components()
+        self._build_application()
         self.setup_handlers()
+        logger.info("Запускаем Telegram бота в режиме polling")
+        assert self.application is not None
+        self.application.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES,
+            close_loop=False,
+        )
 
-        logger.info("🌐 Webhook приложение создано")
+    def create_webhook_app(self):
+        self._build_application()
+        self.setup_handlers()
+        logger.info("Webhook-приложение Telegram собрано")
         return self.application
 
-# Глобальный экземпляр бота
+
 telegram_bot = TelegramBot()
+
+
+__all__ = ["TelegramBot", "telegram_bot"]

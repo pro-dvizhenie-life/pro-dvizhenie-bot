@@ -1,9 +1,19 @@
 """Модели для Telegram бота (отдельно от основной системы анкет)."""
 
-from sqlalchemy import Column, BigInteger, String, Boolean, LargeBinary, TIMESTAMP, Enum, Text
-from sqlalchemy.ext.declarative import declarative_base
 import enum
 from datetime import datetime
+
+from sqlalchemy import (
+    TIMESTAMP,
+    BigInteger,
+    Boolean,
+    Column,
+    Enum,
+    LargeBinary,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 

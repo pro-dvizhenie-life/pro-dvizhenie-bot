@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import os
 import sys
-import django
 from pathlib import Path
+
+import django
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))

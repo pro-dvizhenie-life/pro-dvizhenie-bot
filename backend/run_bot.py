@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """Запуск Telegram бота вместе с Django."""
 
+import logging
 import os
 import sys
-import django
-import logging
 from pathlib import Path
+
+import django
 
 # Настройка пути к Django проекту
 BASE_DIR = Path(__file__).resolve().parent  # backend/
@@ -74,13 +75,15 @@ def main():
         try:
             from telegram import __version__ as telegram_version
             logger.info(f"✅ python-telegram-bot версия: {telegram_version}")
-        except ImportError as e:
+        except ImportError:
             logger.error("❌ python-telegram-bot не установлен")
             return
 
         # Импортируем бота - ТЕПЕРЬ ПРАВИЛЬНЫЙ ПУТЬ
         try:
-            from apps.applications.bots.handlers.telegram_handlers.telegram_handler import telegram_bot
+            from apps.applications.bots.handlers.telegram_handlers.telegram_handler import (
+                telegram_bot,
+            )
             logger.info("✅ Бот успешно импортирован")
         except ImportError as e:
             logger.error(f"❌ Ошибка импорта бота: {e}")

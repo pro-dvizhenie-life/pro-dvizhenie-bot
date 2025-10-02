@@ -1,4 +1,5 @@
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 
 def yes_no_keyboard():
     return InlineKeyboardMarkup([
@@ -22,18 +23,6 @@ def product_keyboard():
             InlineKeyboardButton("Коляска (ТСР)", callback_data="PRODUCT_WHEELCHAIR"),
             InlineKeyboardButton("Приставка", callback_data="PRODUCT_CONSOLE"),
             InlineKeyboardButton("Комплектующие", callback_data="PRODUCT_PARTS")
-        ]
-    ])
-
-def consultation_keyboard():
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("Да, по ИПРА", callback_data="CONSULT_IPRA"),
-            InlineKeyboardButton("Да, по МСЭ", callback_data="CONSULT_MSE")
-        ],
-        [
-            InlineKeyboardButton("Да, по СФР", callback_data="CONSULT_SFR"),
-            InlineKeyboardButton("Нет", callback_data="CONSULT_NO")
         ]
     ])
 
