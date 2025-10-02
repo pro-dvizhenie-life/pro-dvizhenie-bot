@@ -3,10 +3,15 @@ import { createRoot } from 'react-dom/client'
 import App from './app/App.tsx'
 import './app/style/index.css'
 import '@mantine/core/styles.css'
-import { BrowserRouter } from 'react-router'
-import { StoreProvider } from './providers/StoreProvider/index.ts'
-import { ErrorBoundary } from './providers/ErrorBoundary/index.ts'
+import '@mantine/dates/styles.css'
+
+import { BrowserRouter } from 'react-router-dom'
+import { StoreProvider } from './providers/StoreProvider'
+import { ErrorBoundary } from './providers/ErrorBoundary'
+
 import { MantineProvider } from '@mantine/core'
+import { DatesProvider } from '@mantine/dates'
+import 'dayjs/locale/ru'
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
@@ -14,7 +19,9 @@ createRoot(document.getElementById('root')!).render(
 			<StoreProvider>
 				<ErrorBoundary>
 					<MantineProvider>
-						<App />
+						<DatesProvider settings={{ locale: 'ru', firstDayOfWeek: 1 }}>
+							<App />
+						</DatesProvider>
 					</MantineProvider>
 				</ErrorBoundary>
 			</StoreProvider>
