@@ -5,17 +5,20 @@ import os
 import sys
 import django
 import logging
+import asyncio
 from pathlib import Path
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+# НАСТРОЙКА DJANGO ДО ИМПОРТА TELEGRAM
 django.setup()
 
 from django.conf import settings
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,6 +58,10 @@ def main():
         return
 
     try:
+        # Явно создаем event loop
+        if sys.platform == 'win32':
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
         application = Application.builder().token(token).build()
 
         # Добавляем обработчики
@@ -65,6 +72,7 @@ def main():
         logger.info("🚀 Запуск минимального бота...")
         logger.info("✅ Бот запущен! Проверьте в Telegram: /start")
 
+        # Запускаем с явным указанием event loop
         application.run_polling(
             drop_pending_updates=True,
             close_loop=False
@@ -72,6 +80,8 @@ def main():
 
     except Exception as e:
         logger.error(f"❌ Ошибка: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 if __name__ == '__main__':
