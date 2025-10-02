@@ -1,0 +1,172 @@
+### Анализ и предложения по улучшению контроля доступов
+
+#### Общая оценка
+
+В проекте уже заложены ключевые концепции для разделения ролей:
+
+1.  **Модель `User`** (`apps/users/models.py`) содержит поле `role` с вариантами `APPLICANT`, `EMPLOYEE`, `ADMIN`. Это идеальная основа для построения Role-Based Access Control (RBAC).
+2.  **Привязка заявки к пользователю:** Модель `Application`, судя по всему, имеет связь с `User` (`application.user`).
+3.  **Проверка доступа:** В `apps/applications/views/application_views.py` используется функция `_user_can_access`, которая пытается реализовать логику "владелец или сотрудник".
+
+Основной недостаток текущего подхода — ручная проверка доступов внутри каждой view-функции. Это опасно, так как:
+*   **Человеческий фактор:** Легко забыть добавить проверку в новый эндпоинт.
+*   **Дублирование кода:** Логика доступа разбросана по разным местам.
+*   **Сложность:** Логика, смешивающая аутентифицированных пользователей и анонимные сессии (через cookie), усложняет понимание.
+
+Я предлагаю централизовать и усилить контроль доступов, используя стандартные механизмы Django REST Framework (DRF).
+
+---
+
+### Часть 1: Бэкенд (Django) — Фундамент безопасности
+
+Это самый важный уровень. Все правила, определённые здесь, будут работать независимо от фронтенда.
+
+#### 1. Создание кастомных классов разрешений (Permissions)
+
+Вместо функции `_user_can_access` следует использовать классы разрешений DRF. Это декларативный, переиспользуемый и надежный способ.
+
+Создайте новый файл `backend/apps/applications/permissions.py`:
+
+```python
+# backend/apps/applications/permissions.py
+
+from rest_framework import permissions
+from .models import Application
+from apps.users.models import User
+
+class IsEmployeeOrAdmin(permissions.BasePermission):
+    """
+    Разрешение для сотрудников НКО и администраторов.
+    """
+    def has_permission(self, request, view):
+        return (
+            request.user and
+            request.user.is_authenticated and
+            request.user.role in [User.Role.EMPLOYEE, User.Role.ADMIN]
+        )
+
+class IsOwner(permissions.BasePermission):
+    """
+    Разрешение, которое проверяет, является ли пользователь владельцем объекта.
+    """
+    def has_object_permission(self, request, view, obj):
+        # obj здесь - это экземпляр Application
+        if not isinstance(obj, Application):
+            return False
+        return obj.user == request.user
+
+class IsOwnerOrEmployee(permissions.BasePermission):
+    """
+    Комбинированное разрешение:
+    - Дает доступ, если пользователь - владелец заявки.
+    - Дает доступ, если пользователь - сотрудник или админ.
+    """
+    def has_object_permission(self, request, view, obj):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        # Сотрудники и админы могут видеть все
+        if request.user.role in [User.Role.EMPLOYEE, User.Role.ADMIN]:
+            return True
+        
+        # Заявитель может видеть только свою заявку
+        if isinstance(obj, Application):
+            return obj.user == request.user
+            
+        return False
+
+# Примечание: Логику для анонимных пользователей с session_token можно
+# также инкапсулировать сюда, но лучше стимулировать пользователей
+# к созданию аккаунта для большей безопасности.
+```
+
+#### 2. Интеграция классов разрешений во Views
+
+Теперь замените `permissions.AllowAny` и ручные проверки на новые классы.
+
+**Пример для `application_views.py`:**
+
+Вместо:
+
+```python
+# Было
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def get_draft(request, public_id: uuid.UUID) -> Response:
+    application = _get_application(public_id)
+    if not _user_can_access(request, application):
+        return Response(status=HTTP_403_FORBIDDEN)
+    # ...
+```
+
+Используйте:
+
+```python
+# Станет (не забудьте импортировать IsOwnerOrEmployee)
+from .permissions import IsOwnerOrEmployee
+
+@api_view(["GET"])
+@permission_classes([IsOwnerOrEmployee]) # DRF автоматически вызовет has_object_permission
+def get_draft(request, public_id: uuid.UUID) -> Response:
+    application = _get_application(public_id)
+    # Проверка доступа произойдет автоматически до выполнения этого кода.
+    # Если доступа нет, DRF вернет 403 Forbidden.
+    self.check_object_permissions(request, application) # Явный вызов для function-based views
+    # ...
+```
+*Примечание: для `APIView` и `ViewSet` вызов `check_object_permissions` происходит автоматически. Для `@api_view` его нужно вызывать вручную после получения объекта.*
+
+#### 3. Безопасность на уровне запросов к базе данных (QuerySets)
+
+Никогда не доверяйте ID, пришедшему от клиента. Всегда фильтруйте списки объектов.
+
+*   **Для заявителей (`APPLICANT`):** Когда заявитель запрашивает список своих заявок, `queryset` должен быть отфильтрован.
+    ```python
+    # в view, которая отдает список заявок
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == User.Role.APPLICANT:
+            return Application.objects.filter(user=user)
+        elif user.role in [User.Role.EMPLOYEE, User.Role.ADMIN]:
+            return Application.objects.all()
+        return Application.objects.none() # Не аутентифицированным не показываем ничего
+    ```
+
+*   **Для сотрудников (`EMPLOYEE`, `ADMIN`):** Они могут видеть все заявки.
+
+#### 4. Защита от обхода обязательных полей
+
+Ваша текущая реализация с `validate_required` в `post_submit` — это правильный подход. Чтобы его усилить:
+
+1.  **Модели:** Убедитесь, что у полей в моделях `Question` и `Answer` стоят правильные флаги (`blank=False`, `null=False`), если они обязательны.
+2.  **Сериализаторы:** Используйте `required=True` в полях сериализатора. `ModelSerializer` делает это автоматически на основе модели.
+3.  **Логика:** Проверяйте, что все обязательные шаги пройдены и все обязательные вопросы на них отвечены *перед* сменой статуса на `SUBMITTED`. Ваша функция `validate_required` уже это делает, главное — не забывать ее вызывать.
+
+---
+
+### Часть 2: Фронтенд (React) — Пользовательский опыт
+
+Фронтенд должен адаптироваться к правам пользователя, чтобы не вводить его в заблуждение.
+
+1.  **Защита роутов (Route Guarding):**
+    *   Страницы админки (например, `/dashboard`, `/applications`) должны быть обернуты в "защищенный" роут, который проверяет, аутентифицирован ли пользователь и имеет ли он роль `EMPLOYEE` или `ADMIN`. Если нет — перенаправлять на страницу логина или главную.
+
+2.  **Условный рендеринг (Conditional Rendering):**
+    *   **Кнопки действий:** Кнопки "Редактировать", "Удалить", "Сменить статус" должны появляться только у тех, кто имеет на это право.
+    *   **Пример:** В таблице заявок для сотрудника НКО будут видны все заявки и кнопки для работы с ними. Для заявителя в его личном кабинете будет видна только его заявка, и, возможно, кнопка "Продолжить редактирование" (если она в статусе черновика).
+    *   **Данные для принятия решений:** Ваш API должен отдавать достаточно информации. Например, при запросе списка заявок для сотрудника, каждый объект заявки может содержать `owner_id`. А в профиле текущего пользователя (`/api/users/me/`) должны быть его `user_id` и `role`. Фронтенд сможет сравнить эти данные и принять решение о рендеринге.
+
+3.  **Обработка ошибок доступа:**
+    *   Если пользователь каким-то образом попытается выполнить действие, на которое у него нет прав (например, изменит URL), бэкенд вернет ошибку `403 Forbidden`. Фронтенд должен корректно обработать эту ошибку: показать уведомление "У вас нет прав для выполнения этого действия" и не "падать".
+
+---
+
+### Итог и план действий:
+
+1.  **Создать** файл `backend/apps/applications/permissions.py` с классами `IsEmployeeOrAdmin` и `IsOwnerOrEmployee`.
+2.  **Отрефакторить** все view-функции в `backend/apps/applications/views/`, заменив `permissions.AllowAny` и `_user_can_access` на новые классы разрешений.
+3.  **Проверить** все эндпоинты, возвращающие списки заявок, и убедиться, что `queryset` фильтруется в зависимости от роли пользователя.
+4.  **На фронтенде** реализовать логику защищенных роутов и условного рендеринга кнопок и элементов интерфейса на основе роли пользователя, получаемой с бэкенда.
+5.  **Обеспечить** корректную обработку `403 Forbidden` ошибок на фронтенде.
+
+Этот подход сделает вашу систему безопасности централизованной, предсказуемой и легко расширяемой.

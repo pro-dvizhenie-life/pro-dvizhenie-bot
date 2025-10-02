@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from config.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
@@ -12,8 +14,10 @@ from rest_framework import permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
-from ..models import ApplicationComment, ApplicationStatusHistory
+from ..models import Application, ApplicationComment, ApplicationStatusHistory
+from ..permissions import IsEmployeeOrAdmin
 from ..serializers import (
     ApplicationCommentOutSerializer,
     ApplicationDetailSerializer,
@@ -27,27 +31,16 @@ from ..services.application_service import audit, change_status
 from .application_views import _get_application_queryset
 
 
-class IsStaffOrAdmin(permissions.BasePermission):
-    """Доступ только сотрудникам или администраторам."""
-
-    allowed_roles = {"employee", "admin"}
-
-    def has_permission(self, request, view) -> bool:  # type: ignore[override]
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        if user.is_staff:
-            return True
-        role = getattr(user, "role", None)
-        return role in self.allowed_roles
-
-
 class AdminPagination(PageNumberPagination):
-    page_size = 20
-    max_page_size = 100
+    """Стандартные настройки пагинации для административных списков."""
+
+    page_size = DEFAULT_PAGE_SIZE
+    max_page_size = MAX_PAGE_SIZE
 
 
 def _admin_queryset():
+    """Возвращает queryset заявок с предзагрузкой связанных сущностей."""
+
     return _get_application_queryset().prefetch_related(
         "answers__question",
     )
@@ -55,9 +48,19 @@ def _admin_queryset():
 
 @extend_schema(responses=ApplicationShortSerializer(many=True))
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([permissions.IsAuthenticated])
 def application_list(request) -> Response:
-    queryset = _admin_queryset()
+    """Отдаёт постраничный список заявок с фильтрами и поиском."""
+
+    user = request.user
+    User = get_user_model()
+    if user.role == User.Role.APPLICANT:
+        queryset = _admin_queryset().filter(user=user)
+    elif user.role in [User.Role.EMPLOYEE, User.Role.ADMIN]:
+        queryset = _admin_queryset()
+    else:
+        queryset = Application.objects.none()
+
     status_param = request.query_params.get("status")
     if status_param:
         queryset = queryset.filter(status=status_param)
@@ -82,8 +85,10 @@ def application_list(request) -> Response:
 
 @extend_schema(responses=ApplicationDetailSerializer)
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([IsEmployeeOrAdmin])
 def application_detail(request, public_id) -> Response:
+    """Возвращает подробную информацию по конкретной заявке."""
+
     application = get_object_or_404(
         _admin_queryset().prefetch_related(
             Prefetch("comments", queryset=ApplicationComment.objects.select_related("user")),
@@ -101,8 +106,10 @@ def application_detail(request, public_id) -> Response:
     responses=StatusResponseSerializer,
 )
 @api_view(["PATCH"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([IsEmployeeOrAdmin])
 def application_status_patch(request, public_id) -> Response:
+    """Изменяет статус заявки с серверной валидацией переходов."""
+
     application = get_object_or_404(_admin_queryset(), public_id=public_id)
     serializer = ApplicationStatusPatchSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -112,7 +119,7 @@ def application_status_patch(request, public_id) -> Response:
     except ValidationError as exc:
         return Response(
             {"detail": "Validation error", "errors": [{"field": "status", "message": str(exc)}]},
-            status=400,
+            status=HTTP_400_BAD_REQUEST,
         )
     audit(
         action="status_change",
@@ -126,8 +133,10 @@ def application_status_patch(request, public_id) -> Response:
 
 @extend_schema(responses=TimelineResponseSerializer)
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([IsEmployeeOrAdmin])
 def application_timeline(request, public_id) -> Response:
+    """Формирует хронологию изменений и комментариев по заявке."""
+
     application = get_object_or_404(
         _admin_queryset().prefetch_related(
             Prefetch("comments", queryset=ApplicationComment.objects.select_related("user")),

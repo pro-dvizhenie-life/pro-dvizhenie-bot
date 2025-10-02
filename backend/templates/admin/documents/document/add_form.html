@@ -1,0 +1,224 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify application_filters %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+.document-add-layout {
+    display: grid;
+    gap: 24px;
+}
+.document-add-form .form-row {
+    margin-bottom: 14px;
+}
+.document-add-form .form-row label {
+    font-weight: 600;
+}
+.document-add-form .help {
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 4px;
+}
+.document-add-form .errorlist {
+    margin: 4px 0 0;
+    padding: 0;
+}
+.document-add-form .errorlist li {
+    list-style: none;
+    color: #dc3545;
+    font-size: 12px;
+}
+.document-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+.document-summary__item {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #f8f9fa;
+    padding: 10px 12px;
+}
+.document-summary__label {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 4px;
+}
+.document-summary__value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    word-break: break-word;
+}
+.document-requirements,
+.document-existing {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 18px 20px;
+}
+.document-requirements__grid {
+    display: grid;
+    gap: 12px;
+}
+.document-requirement {
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: grid;
+    gap: 6px;
+}
+.document-requirement__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.document-status {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+.status-available { background: #198754; }
+.status-uploaded { background: #0d6efd; }
+.status-pending { background: #fd7e14; }
+.status-rejected { background: #dc3545; }
+.status-missing { background: #adb5bd; }
+.status-info { background: #6c757d; }
+.document-existing__list {
+    display: grid;
+    gap: 10px;
+}
+.document-existing__item {
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.document-existing__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 6px;
+}
+.document-existing__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.submit-row {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{{ media }}
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; Добавить документ
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content" class="content">
+  <div id="content-main" class="document-add-layout">
+    {% if selected_application %}
+      <div class="document-summary">
+        <div class="document-summary__item">
+          <span class="document-summary__label">Заявка</span>
+          <span class="document-summary__value"><a href="{% url 'admin:applications_application_change' selected_application.pk %}" target="_blank">{{ selected_application.public_id }}</a></span>
+        </div>
+        <div class="document-summary__item">
+          <span class="document-summary__label">Анкета</span>
+          <span class="document-summary__value">{{ selected_application.survey.title }} ({{ selected_application.survey.code }})</span>
+        </div>
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate class="document-add-form">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="module aligned">
+        {% for field in form %}
+          <div class="form-row">
+            {{ field.errors }}
+            <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}*{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}
+              <p class="help">{{ field.help_text }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if requirements_overview %}
+        <section class="document-requirements">
+          <h2>Требуемые документы</h2>
+          <div class="document-requirements__grid">
+            {% for item in requirements_overview %}
+              <div class="document-requirement">
+                <div class="document-requirement__header">
+                  <span>{{ item.label }}</span>
+                  <span class="document-status {{ item.status_class }}">{{ item.status_label }}</span>
+                </div>
+                {% if item.filename %}
+                  <p class="help">Загружен: {{ item.filename }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      {% if documents_overview %}
+        <section class="document-existing">
+          <h2>Загруженные документы</h2>
+          <div class="document-existing__list">
+            {% for item in documents_overview %}
+              <div class="document-existing__item">
+                <div class="document-existing__meta">
+                  <strong>{{ item.title }}</strong>
+                  <span class="document-status {{ item.status_class }}">{{ item.status_label }}</span>
+                </div>
+                {% if item.filename %}
+                  <p class="help">{{ item.filename }}</p>
+                {% endif %}
+                <div class="document-existing__actions">
+                  {% if item.download_url %}
+                    <a class="button" href="{{ item.download_url }}" target="_blank" rel="noopener">Скачать</a>
+                  {% endif %}
+                  <a class="button" href="{{ item.change_url }}" target="_blank">Открыть</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <div class="submit-row">
+        <button type="submit" class="button default">Сохранить документ</button>
+        <button type="submit" class="button" name="_continue">Сохранить и продолжить редактирование</button>
+        <button type="submit" class="button" name="_addanother">Сохранить и добавить другой</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

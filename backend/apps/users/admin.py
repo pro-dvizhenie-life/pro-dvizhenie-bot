@@ -1,13 +1,14 @@
+from applications.models import Answer, Application
 from django import forms
 from django.contrib import admin
-from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin, UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import Group
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
-from django.db.models import Count, Prefetch, Q
+from django.contrib.auth.models import Group
+from django.db.models import Count, OuterRef, Prefetch, Q, Subquery
 from django.urls import reverse
 from django.utils.html import format_html
 
-from applications.models import Application
 from .models import User
 
 
@@ -57,6 +58,7 @@ class UserAdmin(BaseUserAdmin):
     model = User
     list_display = (
         'email',
+        'full_name_display',
         'role_badge',
         'is_active',
         'applications_stats',
@@ -205,6 +207,14 @@ class UserAdmin(BaseUserAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         applications_qs = Application.objects.only('status', 'user_id')
+        fullname_subquery = (
+            Answer.objects.filter(
+                application__user=OuterRef('pk'),
+                question__code='q_fullname',
+            )
+            .order_by('-updated_at')
+            .values('value')[:1]
+        )
         return queryset.annotate(
             applications_total=Count('applications', distinct=True),
             applications_submitted=Count(
@@ -220,6 +230,7 @@ class UserAdmin(BaseUserAdmin):
                 filter=Q(applications__status=Application.Status.DRAFT),
                 distinct=True,
             ),
+            latest_fullname=Subquery(fullname_subquery),
         ).prefetch_related(Prefetch('applications', queryset=applications_qs))
 
     def applications_count(self, obj):
@@ -236,6 +247,17 @@ class UserAdmin(BaseUserAdmin):
         return obj.applications_draft
 
     draft_count.short_description = 'Черновики'
+
+    def full_name_display(self, obj):
+        value = getattr(obj, 'latest_fullname', None)
+        if not value:
+            return '—'
+        if isinstance(value, str):
+            cleaned = value.strip()
+            return cleaned or '—'
+        return str(value)
+
+    full_name_display.short_description = 'ФИО из заявок'
 
     def role_badge(self, obj):
         colors = {

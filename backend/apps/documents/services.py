@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import mimetypes
+import re
 import uuid
+from collections import Counter
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from applications.models import Application, DocumentRequirement
 from config.constants import (
@@ -38,6 +44,19 @@ class UploadBundle:
     upload: PresignedUpload
 
 
+@dataclass(slots=True)
+class DocumentBinary:
+    filename: str
+    content: bytes
+    mime_type: str
+
+
+@dataclass(slots=True)
+class DocumentArchive:
+    filename: str
+    content: bytes
+
+
 def get_storage() -> AbstractDocumentStorage:
     """Возвращает синглтон экземпляр хранилища."""
 
@@ -56,6 +75,8 @@ def get_storage() -> AbstractDocumentStorage:
 
 
 def _allowed_types() -> Sequence[str]:
+    """Возвращает допустимые MIME-типы загрузок из настроек или дефолта."""
+
     allowed = getattr(settings, "DOCUMENTS_ALLOWED_CONTENT_TYPES", None)
     if isinstance(allowed, (list, tuple, set)) and allowed:
         return tuple(str(item).strip() for item in allowed if str(item).strip())
@@ -67,6 +88,8 @@ def _allowed_types() -> Sequence[str]:
 
 
 def _allowed_extensions() -> Sequence[str]:
+    """Возвращает разрешённые расширения файлов."""
+
     allowed = getattr(settings, "DOCUMENTS_ALLOWED_FILE_EXTENSIONS", None)
     if isinstance(allowed, (list, tuple, set)) and allowed:
         return tuple(str(item).strip().lower() for item in allowed if str(item).strip())
@@ -78,6 +101,8 @@ def _allowed_extensions() -> Sequence[str]:
 
 
 def _max_size() -> int:
+    """Определяет максимальный размер файла для загрузки."""
+
     try:
         return int(
             getattr(settings, "DOCUMENTS_MAX_FILE_SIZE", DOCUMENTS_DEFAULT_MAX_FILE_SIZE)
@@ -87,6 +112,8 @@ def _max_size() -> int:
 
 
 def _max_documents_per_application() -> int:
+    """Возвращает лимит активных документов для одной заявки."""
+
     try:
         return int(
             getattr(
@@ -100,6 +127,8 @@ def _max_documents_per_application() -> int:
 
 
 def _build_storage_key(application: Application, requirement: Optional[DocumentRequirement], filename: str) -> str:
+    """Формирует уникальный ключ объекта в хранилище для версии документа."""
+
     safe_name = Path(filename).name
     ext = Path(safe_name).suffix
     requirement_part = requirement.code if requirement else "misc"
@@ -270,6 +299,72 @@ def build_download(version: DocumentVersion) -> Optional[PresignedDownload]:
     return storage.generate_download(key=version.file_key)
 
 
+def fetch_document_binary(version: DocumentVersion) -> Optional[DocumentBinary]:
+    """Загружает бинарное содержимое текущей версии документа."""
+
+    if version.status not in {
+        DocumentVersion.Status.AVAILABLE,
+        DocumentVersion.Status.UPLOADED,
+    }:
+        return None
+    storage = get_storage()
+    try:
+        content = storage.read_object(key=version.file_key)
+    except DocumentStorageError:
+        return None
+
+    filename = version.original_name or f"document-{version.document_id}.bin"
+    return DocumentBinary(filename=filename, content=content, mime_type=version.mime_type)
+
+
+def _sanitize_filename(name: str) -> str:
+    """Удаляет недопустимые символы из имени файла для архива."""
+
+    cleaned = name.strip() or "document"
+    cleaned = re.sub(r"[\\/:*?\"<>|]", "_", cleaned)
+    return cleaned
+
+
+def build_documents_archive(
+    documents: Iterable[Document],
+    *,
+    archive_label: str,
+) -> Optional[DocumentArchive]:
+    """Формирует zip-архив с последними версиями выбранных документов."""
+
+    buffer = BytesIO()
+    existing_names: Counter[str] = Counter()
+    added = 0
+
+    with ZipFile(buffer, mode="w", compression=ZIP_DEFLATED) as zip_file:
+        for document in documents:
+            version = document.current_version
+            if not version:
+                continue
+            binary = fetch_document_binary(version)
+            if not binary:
+                continue
+            title = binary.filename or "document"
+            base = _sanitize_filename(Path(title).stem)
+            ext = Path(title).suffix or ".bin"
+            counter = existing_names[base]
+            existing_names[base] += 1
+            if counter:
+                archive_name = f"{base}_{counter}{ext}"
+            else:
+                archive_name = f"{base}{ext}"
+            zip_file.writestr(archive_name, binary.content)
+            added += 1
+
+    if added == 0:
+        return None
+
+    safe_label = _sanitize_filename(archive_label)
+    filename = f"{safe_label}.zip"
+    buffer.seek(0)
+    return DocumentArchive(filename=filename, content=buffer.read())
+
+
 def archive_document(document: Document) -> None:
     """Помечает документ архивированным и удаляет объект из хранилища."""
 
@@ -288,13 +383,77 @@ def archive_document(document: Document) -> None:
         storage.delete_object(key=key)
 
 
+def ingest_admin_upload(
+    *,
+    application: Application,
+    uploaded_file,
+    user: Optional[object] = None,
+    requirement: Optional[DocumentRequirement] = None,
+    document: Optional[Document] = None,
+    title: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> DocumentVersion:
+    """Сохраняет файл, загруженный из админки, и помечает версию доступной."""
+
+    filename = getattr(uploaded_file, "name", None) or "document"
+    content_type = getattr(uploaded_file, "content_type", None) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    file_bytes = uploaded_file.read()
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    size = getattr(uploaded_file, "size", None) or len(file_bytes)
+
+    existing_document = document
+    bundle = request_upload(
+        application=application,
+        requirement=requirement,
+        document=document,
+        filename=filename,
+        content_type=content_type,
+        size=size,
+        user=user,
+    )
+    document_created = existing_document is None
+    document_instance = bundle.document
+
+    storage = get_storage()
+    try:
+        storage.upload_bytes(key=bundle.version.file_key, content=file_bytes, content_type=content_type)
+    except Exception as exc:  # pragma: no cover - зависит от инфраструктуры
+        bundle.version.delete()
+        if document_created:
+            document_instance.delete()
+        raise DocumentStorageError("Не удалось загрузить документ в хранилище") from exc
+
+    checksum = hashlib.md5(file_bytes).hexdigest() if file_bytes else None
+    complete_upload(bundle.version, checksum=checksum)
+
+    update_fields: set[str] = set()
+    if notes is not None and notes != (document_instance.notes or ""):
+        document_instance.notes = notes
+        update_fields.add("notes")
+    effective_title = title or (requirement.label if requirement else document_instance.title)
+    if effective_title and effective_title != (document_instance.title or ""):
+        document_instance.title = effective_title
+        update_fields.add("title")
+    if update_fields:
+        document_instance.save(update_fields=[*update_fields, "updated_at"])
+
+    bundle.version.refresh_from_db()
+    return bundle.version
+
+
 __all__ = [
     "UploadBundle",
     "archive_document",
+    "build_documents_archive",
     "build_download",
     "complete_upload",
+    "fetch_document_binary",
     "get_storage",
     "list_versions",
     "mark_version_available",
     "request_upload",
+    "ingest_admin_upload",
 ]

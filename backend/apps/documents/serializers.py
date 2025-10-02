@@ -22,6 +22,8 @@ class UploadRequestSerializer(serializers.Serializer):
     size = serializers.IntegerField(min_value=1)
 
     def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
+        """Проводит валидацию связанного идентификатора и контекстных объектов."""
+
         application_id = attrs.get("application_id")
         requirement_code = attrs.get("requirement_code")
         document_id = attrs.get("document_id")
@@ -104,16 +106,22 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
         )
 
     def get_requirement_code(self, obj: DocumentVersion) -> Optional[str]:
+        """Возвращает код требования, если он задан для документа."""
+
         if obj.document.requirement:
             return obj.document.requirement.code
         return obj.document.code or None
 
     def get_requirement_label(self, obj: DocumentVersion) -> Optional[str]:
+        """Возвращает название документа для отображения в интерфейсе."""
+
         if obj.document.requirement:
             return obj.document.requirement.label
         return obj.document.title or None
 
     def get_uploaded_at(self, obj: DocumentVersion) -> Optional[str]:
+        """Форматирует метку времени загрузки с учётом локальной таймзоны."""
+
         if obj.uploaded_at:
             return timezone.localtime(obj.uploaded_at).isoformat()
         return None

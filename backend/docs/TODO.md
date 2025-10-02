@@ -28,6 +28,7 @@
 - [x] Регистрация + автоматический логин и выдача JWT/cookie
 - [x] Логин/логаут с обновлением cookie
 - [x] Авторизация на административных эндпоинтах по ролям и IsStaff
+- [x] Вход по магической ссылке: одноразовые токены и email-рассылка
 - [ ] Refresh endpoint и ротация токенов (если потребуется)
 - [ ] Rate limiting и защита от brute-force
 
@@ -35,6 +36,7 @@
 - [x] drf-spectacular включён, схема в `backend/docs/openapi.yml`
 - [x] Swagger/Redoc подключены через `/api/docs/`, `/api/redoc/`
 - [x] Команда `python backend/manage.py check` проходит без ошибок
+- [x] README и .env.example описывают магические ссылки и переменные окружения
 - [ ] Покрыть ключевые сценарии тестами (`manage.py test`)
 - [ ] Добавить документацию по развертыванию Docker (db, redis, minio)
 
