@@ -96,3 +96,70 @@ package-lock.json
 AGENTS.md
 cookies.txt
 GEMINI.md
+
+# Telegram Bot specific
+telegram_bot_persistence*  # Файлы persistence бота
+bot_*.pickle
+
+# Environment files (убедимся что покрыты)
+.env.local
+.env.production
+.env.development
+.env.example
+
+# Django secret key files
+secret_key.txt
+
+# Log files
+logs/
+*.log
+
+# Backup files
+backup/
+*.backup
+
+# Temporary uploads
+tmp/
+temp/
+
+# Database migrations (если нужно исключить)
+# !/backend/apps/*/migrations/
+# /backend/apps/*/migrations/*.py
+# !/backend/apps/*/migrations/__init__.py
+
+# Python cache
+.python-version
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/dataSources/
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+.idea/aws.xml
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/extensions.json
+.history/
+
+# Local development
+local.yml
+docker-compose.override.yml
+
+# Documentation
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata

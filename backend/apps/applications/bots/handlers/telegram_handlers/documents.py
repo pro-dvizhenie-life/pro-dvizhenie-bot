@@ -2,8 +2,8 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import logging
 
-from ....bots.telegram_models import TelegramUser as User, UserState
-from ....bots.database import init_telegram_db
+from backend.apps.applications.bots.telegram_models import TelegramUser as User, UserState
+from backend.apps.applications.bots.database import init_telegram_db
 from .form import get_or_create_user, save_user
 from .preview import send_preview
 

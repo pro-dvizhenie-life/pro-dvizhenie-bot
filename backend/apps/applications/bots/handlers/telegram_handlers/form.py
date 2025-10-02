@@ -3,16 +3,8 @@ from telegram.ext import ContextTypes
 import datetime
 import logging
 
-from ....bots.telegram_models import TelegramUser as User, UserState
-from ....bots.database import init_telegram_db
-from .keyboards import (
-    yes_no_keyboard,
-    resume_keyboard,
-    applicant_status_keyboard,
-    gender_keyboard,
-    product_keyboard,
-    consultation_keyboard
-)
+from backend.apps.applications.bots.telegram_models import TelegramUser as User, UserState
+from backend.apps.applications.bots.database import init_telegram_db
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +12,31 @@ logger = logging.getLogger(__name__)
 SessionLocal = init_telegram_db()
 
 def get_or_create_user(chat_id: int) -> User:
-    with SessionLocal() as db:
-        user = db.get(User, chat_id)
-        if not user:
-            user = User(chat_id=chat_id, state=UserState.START)
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            logger.info(f"Создан новый пользователь: {chat_id}")
-        return user
+    """Получает или создает пользователя в БД."""
+    try:
+        with SessionLocal() as db:
+            user = db.get(User, chat_id)
+            if not user:
+                user = User(chat_id=chat_id, state=UserState.START)
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                logger.info(f"Создан новый пользователь: {chat_id}")
+            return user
+    except Exception as e:
+        logger.error(f"Ошибка при получении пользователя {chat_id}: {e}")
+        raise
 
 def save_user(user: User):
-    with SessionLocal() as db:
-        db.merge(user)
-        db.commit()
-        logger.debug(f"Пользователь {user.chat_id} сохранен")
+    """Сохраняет пользователя в БД."""
+    try:
+        with SessionLocal() as db:
+            db.merge(user)
+            db.commit()
+            logger.debug(f"Пользователь {user.chat_id} сохранен")
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении пользователя {user.chat_id}: {e}")
+        raise
 
 async def form_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id

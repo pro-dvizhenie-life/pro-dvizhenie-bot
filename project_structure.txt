@@ -1,0 +1,253 @@
+.
+├── README.md
+├── backend
+│   ├── apps
+│   │   ├── applications
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── bots
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── database.py
+│   │   │   │   ├── handlers
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── telegram_handler.py
+│   │   │   │   │   ├── telegram_handlers
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── documents.py
+│   │   │   │   │   │   ├── form.py
+│   │   │   │   │   │   ├── help.py
+│   │   │   │   │   │   ├── keyboards.py
+│   │   │   │   │   │   ├── preview.py
+│   │   │   │   │   │   └── start.py
+│   │   │   │   │   └── web_handler.py
+│   │   │   │   ├── scenarios
+│   │   │   │   │   └── default_scenario.py
+│   │   │   │   ├── simple_start.py
+│   │   │   │   ├── telegram_models.py
+│   │   │   │   └── webhooks
+│   │   │   │       └── telegram_webhook.py
+│   │   │   ├── fixtures
+│   │   │   │   ├── README.md
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── applications.py
+│   │   │   │   ├── documents
+│   │   │   │   │   ├── document.docx
+│   │   │   │   │   ├── document.pdf
+│   │   │   │   │   └── image.jpg
+│   │   │   │   └── survey_default.json
+│   │   │   ├── management
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── commands
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── load_default_survey.py
+│   │   │   │       ├── load_fixtures.py
+│   │   │   │       ├── run_bot_simple.py
+│   │   │   │       └── run_telegram_bot.py
+│   │   │   ├── migrations
+│   │   │   │   ├── 0001_initial.py
+│   │   │   │   ├── 0002_schema_sync.py
+│   │   │   │   ├── 0003_alter_question_type.py
+│   │   │   │   └── __init__.py
+│   │   │   ├── models.py
+│   │   │   ├── project_structure.txt
+│   │   │   ├── serializers.py
+│   │   │   ├── services
+│   │   │   │   ├── application_service.py
+│   │   │   │   ├── bot_service.py
+│   │   │   │   ├── dialog_service.py
+│   │   │   │   ├── exporting.py
+│   │   │   │   ├── form_runtime.py
+│   │   │   │   └── scenario_service.py
+│   │   │   ├── signals.py
+│   │   │   ├── templatetags
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── application_filters.py
+│   │   │   ├── tests
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── test_export_services.py
+│   │   │   ├── urls.py
+│   │   │   └── views
+│   │   │       ├── __init__.py
+│   │   │       ├── admin_views.py
+│   │   │       ├── application_views.py
+│   │   │       ├── bot_views.py
+│   │   │       └── export_views.py
+│   │   ├── documents
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── migrations
+│   │   │   │   ├── 0001_initial.py
+│   │   │   │   └── __init__.py
+│   │   │   ├── models.py
+│   │   │   ├── serializers.py
+│   │   │   ├── services.py
+│   │   │   ├── storages.py
+│   │   │   ├── tests
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── test_admin_upload.py
+│   │   │   │   ├── test_exports.py
+│   │   │   │   └── test_upload_limits.py
+│   │   │   ├── urls.py
+│   │   │   └── views.py
+│   │   └── users
+│   │       ├── __init__.py
+│   │       ├── admin.py
+│   │       ├── apps.py
+│   │       ├── migrations
+│   │       │   ├── 0001_initial.py
+│   │       │   ├── 0002_alter_user_last_login.py
+│   │       │   ├── 0003_alter_user_options_alter_user_created_at_and_more.py
+│   │       │   ├── 0004_alter_user_role.py
+│   │       │   ├── 0005_fill_phone_defaults.py
+│   │       │   ├── 0006_enforce_phone_constraints.py
+│   │       │   ├── 0007_align_last_login.py
+│   │       │   ├── 0008_magiclinktoken.py
+│   │       │   └── __init__.py
+│   │       ├── models.py
+│   │       ├── serializers.py
+│   │       ├── services
+│   │       │   ├── __init__.py
+│   │       │   └── magic_link.py
+│   │       ├── signals.py
+│   │       ├── tests
+│   │       │   ├── __init__.py
+│   │       │   └── test_magic_link.py
+│   │       ├── urls.py
+│   │       └── views.py
+│   ├── config
+│   │   ├── __init__.py
+│   │   ├── asgi.py
+│   │   ├── constants.py
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   ├── debug_env_detailed.py
+│   ├── debug_env_load.py
+│   ├── docs
+│   │   ├── DATA.md
+│   │   ├── TODO.md
+│   │   ├── chatbot_scenario.md
+│   │   ├── openapi.yml
+│   │   ├── postman
+│   │   │   └── survey_default.postman_collection.json
+│   │   ├── usercase.txt
+│   │   └── БД-3.pdf
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── templates
+│       ├── admin
+│       │   ├── applications
+│       │   │   └── application
+│       │   │       ├── add_form.html
+│       │   │       └── change_form.html
+│       │   └── documents
+│       │       └── document
+│       │           └── add_form.html
+│       └── emails
+│           ├── magic_link_login.html
+│           └── magic_link_login.txt
+├── docker
+│   └── docker-compose.minio.yml
+├── frontend
+│   ├── INTEGRATION_GUIDE.md
+│   ├── README.md
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   ├── public
+│   │   ├── fonts
+│   │   │   ├── Roboto-Bold.woff2
+│   │   │   └── Roboto-Regular.woff2
+│   │   └── vite.svg
+│   ├── src
+│   │   ├── app
+│   │   │   ├── App.tsx
+│   │   │   └── style
+│   │   │       ├── fonts.css
+│   │   │       ├── global.css
+│   │   │       ├── index.css
+│   │   │       └── variables.css
+│   │   ├── components
+│   │   │   └── ApplicationsTable
+│   │   │       └── ApplicationsTable.tsx
+│   │   ├── main.tsx
+│   │   ├── pages
+│   │   │   ├── Dashboard
+│   │   │   │   ├── index.ts
+│   │   │   │   └── ui
+│   │   │   │       ├── Dashboard.async.ts
+│   │   │   │       ├── Dashboard.module.css
+│   │   │   │       └── Dashboard.tsx
+│   │   │   ├── MainPage
+│   │   │   │   ├── index.ts
+│   │   │   │   └── ui
+│   │   │   │       ├── MainPage.async.ts
+│   │   │   │       ├── MainPage.module.css
+│   │   │   │       └── MainPage.tsx
+│   │   │   └── NotFoundPage
+│   │   │       ├── index.ts
+│   │   │       └── ui
+│   │   │           ├── NotFoundPage.module.css
+│   │   │           └── NotFoundPage.tsx
+│   │   ├── providers
+│   │   │   ├── ErrorBoundary
+│   │   │   │   ├── index.ts
+│   │   │   │   └── ui
+│   │   │   │       └── ErrorBoundary.tsx
+│   │   │   ├── StoreProvider
+│   │   │   │   ├── index.ts
+│   │   │   │   └── ui
+│   │   │   │       └── StoreProvider.tsx
+│   │   │   └── router
+│   │   │       ├── index.ts
+│   │   │       └── ui
+│   │   │           └── AppRouter.tsx
+│   │   ├── shared
+│   │   │   ├── api
+│   │   │   │   └── mocks
+│   │   │   │       ├── step_0.json
+│   │   │   │       ├── step_1.json
+│   │   │   │       ├── step_2.json
+│   │   │   │       └── step_3.json
+│   │   │   ├── config
+│   │   │   │   └── routerConfig.tsx
+│   │   │   ├── const
+│   │   │   │   └── testApplicationsData.ts
+│   │   │   ├── hooks
+│   │   │   │   └── redux.ts
+│   │   │   └── ui
+│   │   │       ├── button
+│   │   │       │   └── buttonUI.tsx
+│   │   │       ├── dateImput
+│   │   │       │   └── dateImputUI.tsx
+│   │   │       ├── logo
+│   │   │       │   ├── logoUI.module.css
+│   │   │       │   └── logoUI.tsx
+│   │   │       ├── passwordInput
+│   │   │       │   └── passwordInputUI.tsx
+│   │   │       ├── radioButton
+│   │   │       │   └── radioButtonUI.tsx
+│   │   │       ├── textInput
+│   │   │       │   └── textInputUI.tsx
+│   │   │       └── textarea
+│   │   │           └── textAreaUI.tsx
+│   │   ├── store
+│   │   │   └── store.ts
+│   │   └── widgets
+│   │       ├── Loader
+│   │       │   ├── Loader.module.css
+│   │       │   └── Loader.tsx
+│   │       └── PageError
+│   │           ├── index.ts
+│   │           └── ui
+│   │               ├── PageError.module.css
+│   │               └── PageError.tsx
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+├── project_structure.txt
+└── ruff.toml
+
+76 directories, 174 files

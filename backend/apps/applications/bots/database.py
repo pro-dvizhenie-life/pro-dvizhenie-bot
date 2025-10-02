@@ -21,7 +21,7 @@ def init_telegram_db():
     engine = create_engine(db_url)
 
     # Создаем таблицы из telegram_models
-    from .telegram_models import Base
+    from backend.apps.applications.bots.telegram_models import Base
     Base.metadata.create_all(engine)
 
     SessionLocal = sessionmaker(bind=engine)

@@ -2,18 +2,23 @@
 
 import logging
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    filters,
+    ContextTypes
+)
 from django.conf import settings
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-# Импорты наших обработчиков
-from .telegram_handlers.start import start
-from .telegram_handlers.help import help_command
-from .telegram_handlers.form import form_entry, handle_callback, handle_text
-from .telegram_handlers.preview import handle_preview_callback
-from .telegram_handlers.documents import handle_documents
+from .help import help_command
+from .form import form_entry, handle_callback, handle_text
+from .preview import handle_preview_callback
+from .documents import handle_documents
 
 class TelegramBot:
     def __init__(self):

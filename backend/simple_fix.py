@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+import os
+import sys
+import django
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+
+print("🔧 Исправление импортов...")
+
+# Временно заменим проблемные файлы
+problem_files = [
+    "apps/applications/bots/handlers/telegram_handlers/form.py",
+    "apps/applications/bots/handlers/telegram_handlers/documents.py",
+    "apps/applications/bots/handlers/telegram_handlers/preview.py"
+]
+
+for file_path in problem_files:
+    full_path = BASE_DIR / file_path
+    if full_path.exists():
+        print(f"Проверяем {file_path}...")
+        content = full_path.read_text(encoding='utf-8')
+
+        # Заменяем проблемные импорты
+        new_content = content.replace(
+            "from ....bots.telegram_models",
+            "from apps.applications.bots.telegram_models"
+        ).replace(
+            "from ....bots.database",
+            "from apps.applications.bots.database"
+        ).replace(
+            "from .keyboards",
+            "from apps.applications.bots.handlers.telegram_handlers.keyboards"
+        )
+
+        if content != new_content:
+            full_path.write_text(new_content, encoding='utf-8')
+            print(f"✅ Исправлен {file_path}")
+        else:
+            print(f"✅ {file_path} уже в порядке")
+
+print("✅ Исправления завершены")
