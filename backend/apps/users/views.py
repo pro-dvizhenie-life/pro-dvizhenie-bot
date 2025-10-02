@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from config.constants import COOKIE_ACCESS_TOKEN, COOKIE_REFRESH_TOKEN
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,7 +25,7 @@ from .serializers import (
 from .services import issue_magic_link_and_send_email, redeem_magic_link
 
 
-def _issue_auth_response(request, user, *, status_code: int = 200):
+def _issue_auth_response(request, user, *, status_code: int = status.HTTP_200_OK):
     """Выдаёт пару токенов и выставляет http-only cookies."""
 
     refresh = RefreshToken.for_user(user)
@@ -36,14 +38,14 @@ def _issue_auth_response(request, user, *, status_code: int = 200):
     response = Response(payload, status=status_code)
     django_login(request, user)
     response.set_cookie(
-        "access_token",
+        COOKIE_ACCESS_TOKEN,
         str(access_token),
         httponly=True,
         samesite="Lax",
         secure=False,
     )
     response.set_cookie(
-        "refresh_token",
+        COOKIE_REFRESH_TOKEN,
         str(refresh),
         httponly=True,
         samesite="Lax",
@@ -59,11 +61,13 @@ class RegisterView(APIView):
 
     @extend_schema(request=RegisterSerializer, responses={201: AuthTokensSerializer})
     def post(self, request):
+        """Создаёт нового пользователя и сразу выдаёт токены доступа."""
+
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         issue_magic_link_and_send_email(user)
-        return _issue_auth_response(request, user, status_code=201)
+        return _issue_auth_response(request, user, status_code=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
@@ -73,13 +77,18 @@ class LoginView(APIView):
 
     @extend_schema(request=LoginSerializer, responses=AuthTokensSerializer)
     def post(self, request):
+        """Выполняет аутентификацию по email и паролю."""
+
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         password = serializer.validated_data["password"]
         user = authenticate(request=request, username=email, password=password)
         if user is None:
-            return Response({"detail": "Неверный email или пароль."}, status=400)
+            return Response(
+                {"detail": "Неверный email или пароль."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return _issue_auth_response(request, user)
 
 
@@ -93,14 +102,18 @@ class LogoutView(APIView):
         responses={204: OpenApiResponse(description="Успешный выход")},
     )
     def post(self, request):
+        """Завершает сессию пользователя и очищает cookies."""
+
         django_logout(request)
-        response = Response(status=204)
-        response.delete_cookie("access_token")
-        response.delete_cookie("refresh_token")
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        response.delete_cookie(COOKIE_ACCESS_TOKEN)
+        response.delete_cookie(COOKIE_REFRESH_TOKEN)
         return response
 
 
 def _get_client_ip(request) -> str | None:
+    """Извлекает IP-адрес клиента из заголовков запроса."""
+
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -114,6 +127,8 @@ class MagicLinkRequestView(APIView):
 
     @extend_schema(request=MagicLinkRequestSerializer, responses={204: None})
     def post(self, request):
+        """Отправляет на почту ссылку для продолжения заявки или входа."""
+
         serializer = MagicLinkRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
@@ -121,9 +136,9 @@ class MagicLinkRequestView(APIView):
         try:
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            return Response(status=204)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         issue_magic_link_and_send_email(user)
-        return Response(status=204)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MagicLinkLoginView(APIView):
@@ -136,6 +151,8 @@ class MagicLinkLoginView(APIView):
         responses={200: AuthTokensSerializer, 400: OpenApiResponse(description="Ошибка")},
     )
     def post(self, request):
+        """Авторизует пользователя по валидному токену из письма."""
+
         serializer = MagicLinkLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data["token"]
@@ -145,7 +162,10 @@ class MagicLinkLoginView(APIView):
             user_agent=request.META.get("HTTP_USER_AGENT"),
         )
         if user is None:
-            return Response({"detail": "Ссылка недействительна или устарела."}, status=400)
+            return Response(
+                {"detail": "Ссылка недействительна или устарела."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return _issue_auth_response(request, user)
 
 
@@ -156,5 +176,7 @@ class MeView(APIView):
 
     @extend_schema(responses=UserSerializer)
     def get(self, request):
+        """Возвращает профиль текущего авторизованного пользователя."""
+
         serializer = UserSerializer(request.user)
         return Response(serializer.data)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from config.constants import DEFAULT_COMMENTS_LIMIT, DEFAULT_CONSENT_TYPE
 from rest_framework import serializers
 
 from .models import (
@@ -193,7 +194,7 @@ class DataConsentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("given_at", "ip_address")
         extra_kwargs = {
-            "consent_type": {"required": False, "default": "pdn_152"},
+            "consent_type": {"required": False, "default": DEFAULT_CONSENT_TYPE},
             "is_given": {"required": False, "default": True},
         }
 
@@ -224,11 +225,15 @@ class ApplicationDetailSerializer(serializers.ModelSerializer):
         )
 
     def get_answers(self, obj: Application) -> Dict[str, Any]:
+        """Возвращает ответы заявки в виде словаря по кодам вопросов."""
+
         return build_answer_dict(obj)
 
     def get_comments(self, obj: Application) -> list[dict[str, Any]]:
+        """Загружает комментарии заявки с учётом лимита из запроса."""
+
         request = self.context.get("request")
-        limit = int(request.query_params.get("comments_limit", 10)) if request else 10
+        limit = int(request.query_params.get("comments_limit", DEFAULT_COMMENTS_LIMIT)) if request else DEFAULT_COMMENTS_LIMIT
         queryset = obj.comments.select_related("user").order_by("-created_at")[:limit]
         return ApplicationCommentOutSerializer(
             queryset,

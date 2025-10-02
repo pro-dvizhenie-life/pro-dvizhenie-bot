@@ -18,6 +18,8 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
+        """Проверяет наличие email и пароля в теле запроса."""
+
         email = attrs.get('email')
         password = attrs.get('password')
         if not email or not password:
@@ -33,16 +35,22 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_email(self, value):
+        """Убеждается, что пользователя с таким email ещё нет."""
+
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError('Пользователь с таким email уже существует.')
         return value
 
     def validate_phone(self, value):
+        """Проверяет уникальность номера телефона."""
+
         if User.objects.filter(phone=value).exists():
             raise serializers.ValidationError('Пользователь с таким телефоном уже существует.')
         return value
 
     def create(self, validated_data):
+        """Создаёт нового пользователя с указанными учетными данными."""
+
         email = validated_data['email']
         phone = validated_data['phone']
         password = validated_data['password']
