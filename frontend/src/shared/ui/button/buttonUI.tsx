@@ -18,7 +18,8 @@ export const ButtonUI: FC<Props> = ({
 			size={size}
 			radius={radius}
 			style={{
-				width: 235,
+				maxWidth: 235,
+				width: '100%',
 				height: 48,
 				...style,
 			}}
