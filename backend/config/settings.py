@@ -18,17 +18,50 @@ from .constants import (
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 APPS_DIR = BASE_DIR / 'apps'
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 if str(APPS_DIR) not in sys.path:
     sys.path.insert(0, str(APPS_DIR))
 
 
+# def load_env(env_path: Path) -> None:
+#     """Заполняет os.environ парами ключ/значение из файла .env."""
+#     if not env_path.exists():
+#         return
+#
+#     for line in env_path.read_text(encoding='utf-8').splitlines():
+#         line = line.strip()
+#         if not line or line.startswith('#') or '=' not in line:
+#             continue
+#         key, value = line.split('=', 1)
+#         key = key.strip()
+#         value = value.strip().strip('"').strip("'")
+#         os.environ.setdefault(key, value)
+#
+#
+# load_env(PROJECT_ROOT / '.env')
+
 def load_env(env_path: Path) -> None:
     """Заполняет os.environ парами ключ/значение из файла .env."""
-    if not env_path.exists():
+    # Пробуем несколько возможных расположений .env
+    possible_paths = [
+        env_path,  # оригинальный путь (backend/.env)
+        PROJECT_ROOT / '.env',  # корень проекта (pro-dvizhenie-bot/.env)
+        BASE_DIR / '.env',  # папка backend
+    ]
+
+    found_path = None
+    for path in possible_paths:
+        if path.exists():
+            found_path = path
+            print(f"📁 Загружаем .env из: {found_path}")
+            break
+
+    if not found_path:
+        print("⚠️  .env файл не найден")
         return
 
-    for line in env_path.read_text(encoding='utf-8').splitlines():
+    for line in found_path.read_text(encoding='utf-8').splitlines():
         line = line.strip()
         if not line or line.startswith('#') or '=' not in line:
             continue
@@ -38,8 +71,8 @@ def load_env(env_path: Path) -> None:
         os.environ.setdefault(key, value)
 
 
-load_env(PROJECT_ROOT / '.env')
-
+# Загружаем .env из корня проекта
+load_env(PROJECT_ROOT.parent / '.env')  # Теперь ищем в /pro-dvizhenie-bot/.env
 
 def str_to_bool(value: str | None, *, default: bool = False) -> bool:
     if value is None:
