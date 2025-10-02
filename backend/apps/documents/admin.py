@@ -89,7 +89,6 @@ class DocumentUploadAdminForm(forms.Form):
         return cleaned
 
 
-
 class DocumentStatusFilter(admin.SimpleListFilter):
     title = "Статус документа"
     parameter_name = "doc_status"

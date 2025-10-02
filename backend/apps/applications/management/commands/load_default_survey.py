@@ -282,4 +282,3 @@ class Command(BaseCommand):
             "conditions": survey.conditions.count(),
             "documents": survey.doc_requirements.count(),
         }
-

@@ -5,14 +5,14 @@ from __future__ import annotations
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.decorators import api_view, permission_classes
 
+from ..permissions import IsEmployeeOrAdmin
 from ..services.exporting import export_applications_csv
-from .admin_views import IsStaffOrAdmin
 from .application_views import _get_application_queryset
 
 
 @extend_schema(responses={200: OpenApiResponse(description="CSV export of applications")})
 @api_view(["GET"])
-@permission_classes([IsStaffOrAdmin])
+@permission_classes([IsEmployeeOrAdmin])
 def export_csv(request):
     queryset = _get_application_queryset()
     status_param = request.query_params.get("status")

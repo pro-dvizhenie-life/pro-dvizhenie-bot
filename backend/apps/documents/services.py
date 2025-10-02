@@ -75,6 +75,8 @@ def get_storage() -> AbstractDocumentStorage:
 
 
 def _allowed_types() -> Sequence[str]:
+    """Возвращает допустимые MIME-типы загрузок из настроек или дефолта."""
+
     allowed = getattr(settings, "DOCUMENTS_ALLOWED_CONTENT_TYPES", None)
     if isinstance(allowed, (list, tuple, set)) and allowed:
         return tuple(str(item).strip() for item in allowed if str(item).strip())
@@ -86,6 +88,8 @@ def _allowed_types() -> Sequence[str]:
 
 
 def _allowed_extensions() -> Sequence[str]:
+    """Возвращает разрешённые расширения файлов."""
+
     allowed = getattr(settings, "DOCUMENTS_ALLOWED_FILE_EXTENSIONS", None)
     if isinstance(allowed, (list, tuple, set)) and allowed:
         return tuple(str(item).strip().lower() for item in allowed if str(item).strip())
@@ -97,6 +101,8 @@ def _allowed_extensions() -> Sequence[str]:
 
 
 def _max_size() -> int:
+    """Определяет максимальный размер файла для загрузки."""
+
     try:
         return int(
             getattr(settings, "DOCUMENTS_MAX_FILE_SIZE", DOCUMENTS_DEFAULT_MAX_FILE_SIZE)
@@ -106,6 +112,8 @@ def _max_size() -> int:
 
 
 def _max_documents_per_application() -> int:
+    """Возвращает лимит активных документов для одной заявки."""
+
     try:
         return int(
             getattr(
@@ -119,6 +127,8 @@ def _max_documents_per_application() -> int:
 
 
 def _build_storage_key(application: Application, requirement: Optional[DocumentRequirement], filename: str) -> str:
+    """Формирует уникальный ключ объекта в хранилище для версии документа."""
+
     safe_name = Path(filename).name
     ext = Path(safe_name).suffix
     requirement_part = requirement.code if requirement else "misc"
@@ -308,6 +318,8 @@ def fetch_document_binary(version: DocumentVersion) -> Optional[DocumentBinary]:
 
 
 def _sanitize_filename(name: str) -> str:
+    """Удаляет недопустимые символы из имени файла для архива."""
+
     cleaned = name.strip() or "document"
     cleaned = re.sub(r"[\\/:*?\"<>|]", "_", cleaned)
     return cleaned

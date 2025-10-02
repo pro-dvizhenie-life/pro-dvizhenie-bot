@@ -6,6 +6,7 @@ import uuid
 from typing import Any, Dict, Iterable
 
 from applications.models import Application
+from config.constants import COOKIE_SESSION_TOKEN
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
@@ -42,18 +43,20 @@ from .storages import DocumentStorageError
 
 
 def _user_can_access(request: HttpRequest, application: Application) -> bool:
-    """Проверка доступа к заявке (копия логики из модуля заявок)."""
+    """Проверяет, может ли пользователь видеть заявку или действует по session cookie."""
 
     if request.user.is_authenticated:
         if request.user.is_staff or request.user == application.user:
             return True
-    token = request.COOKIES.get("session_token")
+    token = request.COOKIES.get(COOKIE_SESSION_TOKEN)
     if token and token == str(application.public_id):
         return True
     return False
 
 
 def _serialize_validation_error(exc: ValidationError) -> Dict[str, Any]:
+    """Приводит исключение Django к стандартизованной структуре ответа."""
+
     if hasattr(exc, "message_dict"):
         return exc.message_dict  # type: ignore[return-value]
     if hasattr(exc, "messages"):
@@ -62,6 +65,8 @@ def _serialize_validation_error(exc: ValidationError) -> Dict[str, Any]:
 
 
 def _prepare_upload_response(bundle: UploadBundle) -> Dict[str, Any]:
+    """Преобразует данные загрузки в сериализуемый словарь."""
+
     upload = {
         "url": bundle.upload.url,
         "method": bundle.upload.method,
@@ -76,6 +81,8 @@ def _prepare_upload_response(bundle: UploadBundle) -> Dict[str, Any]:
 
 
 def _latest_versions(versions: Iterable[DocumentVersion]) -> list[DocumentVersion]:
+    """Оставляет только последние версии документов по каждому идентификатору."""
+
     seen: set[int] = set()
     latest: list[DocumentVersion] = []
     for version in versions:
@@ -89,6 +96,8 @@ def _latest_versions(versions: Iterable[DocumentVersion]) -> list[DocumentVersio
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def create_upload(request) -> Response:
+    """Создаёт попытку загрузки документа и возвращает параметры для клиента."""
+
     serializer = UploadRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     application = serializer.validated_data["application"]
@@ -118,6 +127,8 @@ def create_upload(request) -> Response:
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def complete_upload(request, version_id: uuid.UUID) -> Response:
+    """Отмечает загрузку завершённой и возвращает обновлённую версию документа."""
+
     version = get_object_or_404(
         DocumentVersion.objects.select_related("document", "document__application", "document__requirement"),
         public_id=version_id,
@@ -142,6 +153,8 @@ def complete_upload(request, version_id: uuid.UUID) -> Response:
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def list_application_documents(request, public_id: uuid.UUID) -> Response:
+    """Возвращает список последних версий документов по заявке."""
+
     application = get_object_or_404(
         Application.objects.select_related("survey"),
         public_id=public_id,
@@ -160,6 +173,8 @@ def list_application_documents(request, public_id: uuid.UUID) -> Response:
 @api_view(["DELETE"])
 @permission_classes([permissions.AllowAny])
 def delete_document(request, document_id: uuid.UUID) -> Response:
+    """Архивирует документ и скрывает его из списка активных."""
+
     document = get_object_or_404(
         Document.objects.select_related("application"),
         public_id=document_id,

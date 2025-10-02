@@ -5,6 +5,17 @@ from __future__ import annotations
 import uuid
 
 from applications.models import Application, DocumentRequirement
+from config.constants import (
+    DOCUMENT_CODE_MAX_LENGTH,
+    DOCUMENT_EVENT_TYPE_MAX_LENGTH,
+    DOCUMENT_TITLE_MAX_LENGTH,
+    DOCUMENT_VERSION_CHECKSUM_MAX_LENGTH,
+    DOCUMENT_VERSION_ETAG_MAX_LENGTH,
+    DOCUMENT_VERSION_FILE_KEY_MAX_LENGTH,
+    DOCUMENT_VERSION_MIME_TYPE_MAX_LENGTH,
+    DOCUMENT_VERSION_ORIGINAL_NAME_MAX_LENGTH,
+    DOCUMENT_VERSION_STATUS_MAX_LENGTH,
+)
 from django.conf import settings
 from django.db import models
 
@@ -34,13 +45,13 @@ class Document(models.Model):
     )
     code = models.SlugField(
         "Код документа",
-        max_length=64,
+        max_length=DOCUMENT_CODE_MAX_LENGTH,
         blank=True,
         help_text="Служебный код (обычно совпадает с требованием).",
     )
     title = models.CharField(
         "Название",
-        max_length=200,
+        max_length=DOCUMENT_TITLE_MAX_LENGTH,
         blank=True,
         help_text="Отображаемое имя документа.",
     )
@@ -95,21 +106,28 @@ class DocumentVersion(models.Model):
         related_name="versions",
     )
     version = models.PositiveIntegerField("Номер версии", default=1)
-    file_key = models.CharField("Ключ в хранилище", max_length=512)
-    original_name = models.CharField("Исходное имя файла", max_length=255)
-    mime_type = models.CharField("MIME-тип", max_length=100)
+    file_key = models.CharField("Ключ в хранилище", max_length=DOCUMENT_VERSION_FILE_KEY_MAX_LENGTH)
+    original_name = models.CharField(
+        "Исходное имя файла",
+        max_length=DOCUMENT_VERSION_ORIGINAL_NAME_MAX_LENGTH,
+    )
+    mime_type = models.CharField("MIME-тип", max_length=DOCUMENT_VERSION_MIME_TYPE_MAX_LENGTH)
     size = models.BigIntegerField("Размер файла")
-    checksum = models.CharField("Контрольная сумма", max_length=128, blank=True)
-    etag = models.CharField("ETag", max_length=128, blank=True)
+    checksum = models.CharField(
+        "Контрольная сумма",
+        max_length=DOCUMENT_VERSION_CHECKSUM_MAX_LENGTH,
+        blank=True,
+    )
+    etag = models.CharField("ETag", max_length=DOCUMENT_VERSION_ETAG_MAX_LENGTH, blank=True)
     status = models.CharField(
         "Статус",
-        max_length=20,
+        max_length=DOCUMENT_VERSION_STATUS_MAX_LENGTH,
         choices=Status.choices,
         default=Status.PENDING,
     )
     antivirus_status = models.CharField(
         "Статус антивирусной проверки",
-        max_length=20,
+        max_length=DOCUMENT_VERSION_STATUS_MAX_LENGTH,
         choices=AntivirusStatus.choices,
         default=AntivirusStatus.PENDING,
     )
@@ -163,7 +181,7 @@ class DocumentEvent(models.Model):
     )
     event_type = models.CharField(
         "Тип события",
-        max_length=32,
+        max_length=DOCUMENT_EVENT_TYPE_MAX_LENGTH,
         choices=EventType.choices,
     )
     payload = models.JSONField("Данные", default=dict, blank=True)

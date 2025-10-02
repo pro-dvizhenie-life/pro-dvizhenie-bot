@@ -7,6 +7,12 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from config.constants import (
+    MAGIC_LINK_DEFAULT_EMAIL_SUBJECT,
+    MAGIC_LINK_DEFAULT_RESUME_URL,
+    MAGIC_LINK_DEFAULT_TTL_MINUTES,
+    MAGIC_LINK_TOKEN_RAW_BYTES,
+)
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
@@ -28,27 +34,33 @@ class MagicLinkIssueResult:
 def _generate_raw_token() -> tuple[str, str]:
     """Возвращает пару (raw_token, hashed_token)."""
 
-    raw_token = secrets.token_urlsafe(32)
+    raw_token = secrets.token_urlsafe(MAGIC_LINK_TOKEN_RAW_BYTES)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     return raw_token, token_hash
 
 
 def _token_expiration() -> datetime:
-    ttl_minutes = getattr(settings, "MAGIC_LINK_TOKEN_TTL_MINUTES", 60 * 24)
+    """Вычисляет момент истечения токена magic link."""
+
+    ttl_minutes = getattr(settings, "MAGIC_LINK_TOKEN_TTL_MINUTES", MAGIC_LINK_DEFAULT_TTL_MINUTES)
     return timezone.now() + timedelta(minutes=ttl_minutes)
 
 
 def _build_resume_url(raw_token: str) -> str:
+    """Формирует ссылку на продолжение заявки с токеном входа."""
+
     base_url = getattr(
         settings,
         "FRONTEND_APPLICATION_RESUME_URL",
-        "http://localhost:3000/application/resume",
+        MAGIC_LINK_DEFAULT_RESUME_URL,
     ).rstrip("/")
     separator = "&" if "?" in base_url else "?"
     return f"{base_url}{separator}token={raw_token}"
 
 
 def _render_email(template: str, context: dict[str, object]) -> str:
+    """Рендерит письмо по шаблону, возвращая пустую строку при отсутствии."""
+
     try:
         return render_to_string(template, context)
     except TemplateDoesNotExist:
@@ -77,14 +89,14 @@ def issue_magic_link_and_send_email(user: User) -> MagicLinkIssueResult:
         "token_valid_minutes": getattr(
             settings,
             "MAGIC_LINK_TOKEN_TTL_MINUTES",
-            60 * 24,
+            MAGIC_LINK_DEFAULT_TTL_MINUTES,
         ),
         "project_name": getattr(settings, "PROJECT_NAME", "Про Движение"),
     }
     subject = getattr(
         settings,
         "MAGIC_LINK_EMAIL_SUBJECT",
-        "Продолжите заполнение заявки",
+        MAGIC_LINK_DEFAULT_EMAIL_SUBJECT,
     )
     text_body = _render_email("emails/magic_link_login.txt", context)
     html_body = _render_email("emails/magic_link_login.html", context)
