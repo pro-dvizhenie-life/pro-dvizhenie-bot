@@ -8,7 +8,6 @@ from django.core import mail
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-
 from users.models import MagicLinkToken, User
 from users.services import issue_magic_link_and_send_email
 

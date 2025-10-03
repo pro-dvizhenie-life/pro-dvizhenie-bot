@@ -3,7 +3,7 @@
 from django.urls import path
 
 from . import views
-from .views import admin_views, application_views, export_views
+from .views import admin_views, application_views, bot_views, export_views
 
 app_name = "applications"
 
@@ -21,4 +21,5 @@ urlpatterns = [
     path("admin/applications/<uuid:public_id>/status/", admin_views.application_status_patch, name="admin_application_status"),
     path("admin/applications/<uuid:public_id>/timeline/", admin_views.application_timeline, name="admin_application_timeline"),
     path("admin/export.csv", export_views.export_csv, name="applications_export"),
+    path("telegram/webhook/", bot_views.telegram_webhook, name="telegram_webhook"),
 ]

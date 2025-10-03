@@ -9,8 +9,22 @@
       { "id": 20, "code": "diagnosis", "type": "text", "label": "Укажите диагноз", "required": true },
       { "id": 21, "code": "health_state", "type": "text", "label": "Опишите текущее состояние здоровья", "required": true },
       { "id": 22, "code": "diagnosis_date", "type": "date", "label": "Когда был поставлен диагноз?", "required": false },
-      { "id": 23, "code": "ipra_tsr", "type": "yes_no", "label": "Прописано ли ТСР в ИПРА?", "required": false },
-      { "id": 24, "code": "deadline", "type": "date", "label": "Есть ли сроки, к которым важно получить помощь?", "required": false },
+      {
+        "id": 23,
+        "code": "ipra_tsr",
+        "type": "textarea",
+        "label": "Расскажите, прописано ли ТСР в медзаключении или ИПРА",
+        "required": false,
+        "help_text": "Если нет, опишите сложности."
+      },
+      {
+        "id": 24,
+        "code": "deadline",
+        "type": "textarea",
+        "label": "Напишите, есть ли важные сроки, к которым нужна помощь",
+        "required": false,
+        "help_text": "Например, реабилитация, соревнования или другой дедлайн."
+      },
       { "id": 25, "code": "family_story", "type": "text", "label": "Расскажите о семье или близких", "required": false },
       { "id": 26, "code": "motivation", "type": "text", "label": "Кто вас вдохновляет или поддерживает?", "required": false },
       { "id": 27, "code": "hobbies", "type": "text", "label": "Чем увлекаетесь? Хобби?", "required": false },

@@ -93,6 +93,8 @@ class DraftOutSerializer(serializers.Serializer):
     current_stage = serializers.IntegerField()
     current_step = StepSerializer(allow_null=True)
     answers = serializers.DictField(child=serializers.JSONField(), default=dict)
+    restart_available = serializers.BooleanField(default=False)
+    restart_url = serializers.CharField(required=False, allow_blank=True)
 
 
 class NextOutSerializer(DraftOutSerializer):

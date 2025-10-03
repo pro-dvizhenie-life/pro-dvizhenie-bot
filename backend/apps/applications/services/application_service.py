@@ -25,6 +25,11 @@ from ..models import (
     DataConsent,
 )
 
+CONSENT_DECLINED_MESSAGE = (
+    "Спасибо, что заглянули! Без согласия на обработку персональных данных мы пока не можем принять заявку. "
+    "Если решите продолжить, просто начните заполнение заново. Мы всегда на связи: 8 800 550 17 82 или в Telegram https://t.me/fond_prodvigenie."
+)
+
 
 def change_status(
     application: Application,
@@ -168,41 +173,42 @@ def ensure_applicant_account(
     if not email_value or not phone_value:
         return application.user
 
-    email = str(email_value).strip().lower()
-    phone = str(phone_value).strip()
+    email = str(email_value).strip().lower() if email_value else None
+    phone = str(phone_value).strip() if phone_value else None
+    if not email:
+        # Без email идентифицировать пользователя надёжно нельзя
+        return application.user
     User = get_user_model()
 
     user = application.user
-    if user and user.email and user.phone:
+    if user:
         # обновим email/phone при необходимости
         updates: list[str] = []
-        if user.email != email and not User.objects.filter(email=email).exclude(pk=user.pk).exists():
+        if email and user.email != email and not User.objects.filter(email=email).exclude(pk=user.pk).exists():
             user.email = email
             updates.append("email")
-        if user.phone != phone and not User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
+        if phone and user.phone != phone and not User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
             user.phone = phone
             updates.append("phone")
         if updates:
             user.save(update_fields=updates)
     else:
         # Пытаемся найти существующего пользователя
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            try:
-                user = User.objects.get(phone=phone)
-            except User.DoesNotExist:
-                user = User.objects.create_user(email=email, phone=phone, password=None)
-            else:
-                # найден по телефону — обновим email, если свободен
-                if user.email != email and not User.objects.filter(email=email).exclude(pk=user.pk).exists():
-                    user.email = email
-                    user.save(update_fields=["email"])
-        else:
-            # найден по email — обновим телефон, если свободен
-            if user.phone != phone and not User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
+        user = User.objects.filter(email=email).first()
+        if not user and phone:
+            user = User.objects.filter(phone=phone).first()
+        if user:
+            updated: list[str] = []
+            if user.email != email:
+                user.email = email
+                updated.append("email")
+            if phone and user.phone != phone:
                 user.phone = phone
-                user.save(update_fields=["phone"])
+                updated.append("phone")
+            if updated:
+                user.save(update_fields=updated)
+        else:
+            user = User.objects.create_user(email=email, phone=phone, password=None)
 
     if user and application.user_id != user.pk:
         application.user = user
@@ -226,10 +232,31 @@ def ensure_applicant_account(
     return user
 
 
+def handle_consent_decline(application: Application) -> None:
+    """Удаляет заявку и при необходимости связанную учётную запись."""
+
+    user = application.user
+    user_pk: Optional[int] = user.pk if user else None
+    user_role = getattr(user, "role", None) if user else None
+    other_applications = False
+    if user:
+        other_applications = user.applications.exclude(pk=application.pk).exists()
+
+    with transaction.atomic():
+        Application.objects.filter(pk=application.pk).delete()
+        if user_pk is not None and not other_applications:
+            user_model = get_user_model()
+            applicant_role = getattr(user_model, "Role", None)
+            if applicant_role is None or user_role == applicant_role.APPLICANT:
+                user_model.objects.filter(pk=user_pk).delete()
+
+
 __all__ = [
     "change_status",
     "add_comment",
     "record_consent",
     "ensure_applicant_account",
     "audit",
+    "handle_consent_decline",
+    "CONSENT_DECLINED_MESSAGE",
 ]

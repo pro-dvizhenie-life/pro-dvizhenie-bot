@@ -35,8 +35,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# Django stuff
-*.log
+# Django
 local_settings.py
 media/
 staticfiles/
@@ -45,16 +44,13 @@ staticfiles/
 *.sqlite3
 *.db
 
-# Pytest
+# Testing / coverage
 .cache/
-
-# Coverage reports
 htmlcov/
 .tox/
 .nox/
 .coverage
 .coverage.*
-.cache
 nosetests.xml
 coverage.xml
 *.cover
@@ -62,27 +58,45 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# mypy
+# Type checkers
 .mypy_cache/
 .dmypy.json
 .dmypy/
-
-# Pyre type checker
 .pyre/
+.pytype/
 
 # IDEs and editors
-.vscode/
 .idea/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/dataSources/
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+.idea/aws.xml
+.vscode/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/extensions.json
+.history/
 *.swp
 *.swo
 *.swn
 *~
 
-# macOS
+# OS generated
 .DS_Store
 
-# Docker
+# Docker / local orchestration
 *.pid
+local.yml
+docker-compose.override.yml
 
 # Node / frontend
 node_modules/
@@ -90,9 +104,42 @@ node_modules/
 yarn.lock
 package-lock.json
 
-# Misc
-*.bak
+# Environment files
+.env.local
+.env.production
+.env.development
+.env.example
+
+# Documentation build
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+# Python configuration
+.python-version
+
+# Jupyter
+.ipynb_checkpoints
+
+# Logs and backups
+logs/
+*.log
+backup/
+*.backup
+
+# Temporary files
+tmp/
+temp/
 *.tmp
+*.bak
+
+# Project artifacts
 AGENTS.md
 cookies.txt
 GEMINI.md
+secret_key.txt
+
+# Telegram bot
+telegram_bot_persistence*
+bot_*.pickle

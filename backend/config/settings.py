@@ -18,6 +18,7 @@ from .constants import (
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 APPS_DIR = BASE_DIR / 'apps'
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 if str(APPS_DIR) not in sys.path:
     sys.path.insert(0, str(APPS_DIR))
@@ -26,6 +27,7 @@ if str(APPS_DIR) not in sys.path:
 def load_env(env_path: Path) -> None:
     """Заполняет os.environ парами ключ/значение из файла .env."""
     if not env_path.exists():
+        print(f"⚠️  Файл .env не найден: {env_path}")
         return
 
     for line in env_path.read_text(encoding='utf-8').splitlines():
@@ -36,9 +38,12 @@ def load_env(env_path: Path) -> None:
         key = key.strip()
         value = value.strip().strip('"').strip("'")
         os.environ.setdefault(key, value)
+        print(f"✅ Загружена переменная: {key}")
 
-
+env_path = PROJECT_ROOT / '.env'
+print(f"🔍 Ищем .env файл: {env_path}")
 load_env(PROJECT_ROOT / '.env')
+
 
 
 def str_to_bool(value: str | None, *, default: bool = False) -> bool:
@@ -79,6 +84,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'applications.apps.ApplicationsConfig',
     'documents.apps.DocumentsConfig',
+    # 'apps.applications',
 ]
 
 MIDDLEWARE = [
@@ -195,6 +201,8 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+print(f"🔑 TELEGRAM_BOT_TOKEN: {'***' + TELEGRAM_BOT_TOKEN[-5:] if TELEGRAM_BOT_TOKEN else 'НЕ НАЙДЕН'}")
 
 def _int_from_env(name: str, default: int) -> int:
     value = os.environ.get(name)

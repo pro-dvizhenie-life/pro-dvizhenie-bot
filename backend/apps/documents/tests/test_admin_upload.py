@@ -8,7 +8,6 @@ from applications.models import Application, DocumentRequirement, Survey
 from django.contrib.admin.sites import AdminSite
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-
 from documents.admin import DocumentUploadAdminForm
 from documents.models import DocumentVersion
 from documents.services import PresignedUpload, ingest_admin_upload
