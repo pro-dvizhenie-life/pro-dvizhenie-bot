@@ -54,5 +54,6 @@ jobs:
             docker compose -f docker/docker-compose.prod.yml up -d --build --remove-orphans
             # создать бакет (идемпотентно)
             docker compose -f docker/docker-compose.prod.yml run --rm minio-setup || true
+            docker compose -f docker/docker-compose.prod.yml exec -T backend python -c "import os,boto3; s3=boto3.client('s3',endpoint_url=os.environ['DOCUMENTS_STORAGE_ENDPOINT'],aws_access_key_id=os.environ['DOCUMENTS_STORAGE_ACCESS_KEY'],aws_secret_access_key=os.environ['DOCUMENTS_STORAGE_SECRET_KEY'],region_name=os.environ['DOCUMENTS_STORAGE_REGION']); b=os.environ.get('DOCUMENTS_STORAGE_BUCKET','documents'); bs=[x['Name'] for x in s3.list_buckets().get('Buckets',[])]; print('buckets=',bs); 0 if b in bs else (s3.create_bucket(Bucket=b) or 0)"
             docker compose -f docker/docker-compose.prod.yml exec -T backend python backend/manage.py migrate --noinput
             docker compose -f docker/docker-compose.prod.yml exec -T backend python backend/manage.py collectstatic --noinput
