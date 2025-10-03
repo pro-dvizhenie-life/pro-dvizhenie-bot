@@ -95,6 +95,8 @@ def _build_rows(queryset: QuerySet[Application], question_codes: Sequence[str]) 
 
 
 def build_export_dataset(queryset: QuerySet[Application]) -> ApplicationExportDataset:
+    """Формирует набор заголовков и строк по переданному queryset заявок."""
+
     question_codes = _collect_question_codes(queryset)
     headers = [
         "public_id",
@@ -113,6 +115,8 @@ def build_export_dataset(queryset: QuerySet[Application]) -> ApplicationExportDa
 
 
 def export_applications_csv(queryset: QuerySet[Application], *, filename: str) -> StreamingHttpResponse:
+    """Возвращает потоковый CSV-ответ со списком заявок."""
+
     dataset = build_export_dataset(queryset)
     pseudo_buffer = _Echo()
     writer = csv.writer(pseudo_buffer)
@@ -128,6 +132,8 @@ def export_applications_csv(queryset: QuerySet[Application], *, filename: str) -
 
 
 def export_applications_xlsx(queryset: QuerySet[Application], *, filename: str) -> HttpResponse:
+    """Подготавливает XLSX-файл с заявками и отдаёт его как ответ."""
+
     try:
         from openpyxl import Workbook
         from openpyxl.utils import get_column_letter

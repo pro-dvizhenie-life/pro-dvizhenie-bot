@@ -26,6 +26,8 @@ def build_answer_dict(application: Application) -> Dict[str, Any]:
 
 
 def _resolve_operand(value: Any, ctx: Dict[str, Any]) -> Any:
+    """Подставляет значения в выражении JSON-logic с учётом контекста."""
+
     if isinstance(value, dict) and value.keys() == {"var"}:
         return ctx.get(value["var"])
     if isinstance(value, dict):
@@ -123,10 +125,14 @@ PHONE_RE = re.compile(r"^\+7\d{10}$")
 
 
 def _option_values(question: Question) -> Sequence[str]:
+    """Возвращает допустимые значения вариантов вопроса."""
+
     return list(question.options.values_list("value", flat=True))
 
 
 def _validate_select(question: Question, raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    """Проверяет ответ для одиночного выбора."""
+
     if raw_value in (None, ""):
         return raw_value, None
     if not isinstance(raw_value, str):
@@ -138,6 +144,8 @@ def _validate_select(question: Question, raw_value: Any) -> Tuple[Optional[Any],
 
 
 def _validate_multiselect(question: Question, raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    """Проверяет ответ для множественного выбора."""
+
     if raw_value in (None, []):
         return [], None
     if not isinstance(raw_value, (list, tuple)):
@@ -155,6 +163,8 @@ def _validate_multiselect(question: Question, raw_value: Any) -> Tuple[Optional[
 
 
 def _validate_boolean(raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
+    """Преобразует булев ответ и валидирует поддерживаемые представления."""
+
     if raw_value in (None, ""):
         return None, None
     if isinstance(raw_value, bool):
@@ -169,6 +179,8 @@ def _validate_boolean(raw_value: Any) -> Tuple[Optional[Any], Optional[str]]:
 
 
 def _validate_string(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
+    """Проверяет строковое значение и убирает лишние пробелы."""
+
     if raw_value in (None, ""):
         return raw_value, None
     if not isinstance(raw_value, str):
@@ -177,6 +189,8 @@ def _validate_string(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
 
 
 def _validate_email(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
+    """Проводит валидацию адреса электронной почты."""
+
     value, error = _validate_string(raw_value)
     if error or value in (None, ""):
         return value, error
@@ -186,6 +200,8 @@ def _validate_email(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
 
 
 def _validate_phone(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
+    """Проверяет телефон и приводит его к ожидаемому формату."""
+
     value, error = _validate_string(raw_value)
     if error or value in (None, ""):
         return value, error
@@ -195,6 +211,8 @@ def _validate_phone(raw_value: Any) -> Tuple[Optional[str], Optional[str]]:
 
 
 def _validate_date(raw_value: Any, constraints: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
+    """Парсит строковое значение даты и проверяет ограничения."""
+
     if raw_value in (None, ""):
         return raw_value, None
     if not isinstance(raw_value, str):
@@ -282,6 +300,8 @@ def validate_required(step: Step, answers: Dict[str, Any]) -> List[Dict[str, str
 
 
 def _derive_branch(application: Application, answers: Dict[str, Any]) -> Optional[str]:
+    """Определяет ветку анкеты (взрослый/ребёнок) по данным заявки."""
+
     mapping = {
         "self": "adult",
         "relative": "adult",
@@ -299,6 +319,8 @@ def _derive_branch(application: Application, answers: Dict[str, Any]) -> Optiona
 
 
 def _derive_age(answers: Dict[str, Any]) -> Optional[int]:
+    """Вычисляет возраст подопечного на основе даты рождения."""
+
     dob_value = answers.get("q_dob")
     if not dob_value:
         return None

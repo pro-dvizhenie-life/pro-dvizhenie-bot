@@ -17,4 +17,3 @@ def get_item(bound_field_container, key):
         return bound_field_container[key]
     except Exception:  # pragma: no cover - защита от неверных ключей
         return None
-

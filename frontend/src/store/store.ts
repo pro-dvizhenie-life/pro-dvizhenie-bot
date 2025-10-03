@@ -1,4 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
+import userReducer from './slices/userSlice'
+import stepsReducer from './slices/stepsSlice'
 // import { categoriesAPI } from "services/CategoriesService";
 // import { servicesAPI } from "services/ServicesService";
 // import { mySubscriptionsAPI } from "services/MySubscriptions";
@@ -6,6 +8,8 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit'
 // import { searchReducer as searchSlice } from "./reducers/searchSlice";
 
 const rootReducer = combineReducers({
+	user: userReducer,
+	steps: stepsReducer,
 	//   search: searchSlice,
 	//   [categoriesAPI.reducerPath]: categoriesAPI.reducer,
 	//   [servicesAPI.reducerPath]: servicesAPI.reducer,

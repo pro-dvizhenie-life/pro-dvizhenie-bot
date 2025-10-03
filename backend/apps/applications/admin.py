@@ -103,7 +103,7 @@ class SurveyAdmin(admin.ModelAdmin):
         "recent_applications",
     )
     fieldsets = (
-        (None, {"fields": ("code", "title", "version", "is_active")} ),
+        (None, {"fields": ("code", "title", "version", "is_active")}),
         (
             "Структура анкеты",
             {
@@ -336,6 +336,7 @@ class SurveyAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"Деактивировано анкет: {updated}")
 
+
 class StepConditionsFilter(admin.SimpleListFilter):
     title = "Условия"
     parameter_name = "has_conditions"
@@ -379,7 +380,7 @@ class StepAdmin(admin.ModelAdmin):
     ordering = ("survey", "order")
     readonly_fields = ("questions_overview",)
     fieldsets = (
-        (None, {"fields": ("survey", "code", "title", "order")} ),
+        (None, {"fields": ("survey", "code", "title", "order")}),
         ("Вопросы", {"fields": ("questions_overview",)}),
     )
 
@@ -707,7 +708,7 @@ class ApplicationAnswersForm(forms.Form):
         if question.type in {Question.QType.SELECT, Question.QType.SELECT_ONE}:
             choices = [(option.value, option.label) for option in question.options.all()]
             if not required:
-                choices = [("", "---")]+choices
+                choices = [("", "---")] + choices
             return forms.ChoiceField(
                 label=label,
                 required=required,
@@ -787,6 +788,7 @@ class ApplicationDocumentUploadForm(forms.Form):
         else:
             cleaned["title"] = title
         return cleaned
+
 
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):
@@ -965,6 +967,7 @@ class ApplicationAdmin(admin.ModelAdmin):
             return super().response_add(request, obj, post_url_continue)
         messages.success(request, "Заявка создана")
         return redirect(reverse("admin:applications_application_change", args=[obj.pk]))
+
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         extra_context = extra_context or {}
         obj = self.get_object(request, object_id) if object_id else None
@@ -988,6 +991,7 @@ class ApplicationAdmin(admin.ModelAdmin):
             extra_context.setdefault("summary_cards", [])
 
         return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
+
     def add_comment_view(self, request, object_id):
         application = self.get_object(request, object_id)
         if not application:
@@ -1877,6 +1881,7 @@ class ApplicationStatusHistoryAdmin(admin.ModelAdmin):
         return "Система"
 
     changed_by_display.short_description = "Изменил"
+
 
 @admin.register(DataConsent)
 class DataConsentAdmin(admin.ModelAdmin):

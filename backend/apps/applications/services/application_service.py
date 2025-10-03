@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from config.constants import (
+    APPLICATION_CONSENT_CODES,
+    APPLICATION_CONTACT_EMAIL_CODES,
+    APPLICATION_CONTACT_PHONE_CODES,
+    APPLICATION_STATUS_ALLOWED_TRANSITIONS,
+    DEFAULT_CONSENT_TYPE,
+)
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -34,12 +41,8 @@ def change_status(
     """Изменяет статус заявки с проверкой допустимых переходов."""
 
     allowed_transitions: dict[str, set[str]] = {
-        Application.Status.DRAFT: {Application.Status.SUBMITTED},
-        Application.Status.SUBMITTED: {
-            Application.Status.UNDER_REVIEW,
-            Application.Status.APPROVED,
-            Application.Status.REJECTED,
-        },
+        source: set(targets)
+        for source, targets in APPLICATION_STATUS_ALLOWED_TRANSITIONS.items()
     }
 
     current_status = application.status
@@ -147,12 +150,9 @@ def audit(
     return log
 
 
-CONTACT_EMAIL_CODES = ("q_email",)
-CONTACT_PHONE_CODES = ("q_phone",)
-CONSENT_CODES = ("q_agree",)
-
-
 def _first_answer(answers: Dict[str, Any], codes: tuple[str, ...]) -> Optional[Any]:
+    """Возвращает первый непустой ответ среди указанных кодов вопросов."""
+
     for code in codes:
         value = answers.get(code)
         if value not in (None, "", []):
@@ -168,9 +168,9 @@ def ensure_applicant_account(
 ):
     """Обеспечивает создание/привязку пользователя к заявке по ответам анкеты."""
 
-    email_value = _first_answer(answers, CONTACT_EMAIL_CODES)
-    phone_value = _first_answer(answers, CONTACT_PHONE_CODES)
-    if not email_value and not phone_value:
+    email_value = _first_answer(answers, APPLICATION_CONTACT_EMAIL_CODES)
+    phone_value = _first_answer(answers, APPLICATION_CONTACT_PHONE_CODES)
+    if not email_value or not phone_value:
         return application.user
 
     email = str(email_value).strip().lower() if email_value else None
@@ -214,17 +214,17 @@ def ensure_applicant_account(
         application.user = user
         application.save(update_fields=["user", "updated_at"])
 
-    if user and _first_answer(answers, CONSENT_CODES) is True:
+    if user and _first_answer(answers, APPLICATION_CONSENT_CODES) is True:
         existing = DataConsent.objects.filter(
             user=user,
             application=application,
-            consent_type=DataConsent.CType.PDN_152,
+            consent_type=DEFAULT_CONSENT_TYPE,
         ).first()
         if not existing or not existing.is_given:
             record_consent(
                 user=user,
                 application=application,
-                consent_type=DataConsent.CType.PDN_152,
+                consent_type=DEFAULT_CONSENT_TYPE,
                 is_given=True,
                 ip_address=None,
             )

@@ -6,20 +6,28 @@ import uuid
 from datetime import date
 from typing import Any, Dict, List, Optional
 
+from config.constants import (
+    ALLOWED_APPLICANT_TYPES,
+    COOKIE_SESSION_TOKEN,
+    DEFAULT_CONSENT_TYPE,
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+)
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import permissions
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
 )
 
 from ..models import Answer, Application, Question, Step, Survey
+from ..permissions import IsEmployeeOrAdmin, IsOwnerOrEmployee
 from ..serializers import (
     AnswerPatchItemSerializer,
     ApplicationCommentInSerializer,
@@ -49,41 +57,10 @@ from ..services.form_runtime import (
     visible_questions,
 )
 
-ALLOWED_APPLICANT_TYPES = ('self', 'parent', 'guardian', 'relative')
-CONSENT_QUESTION_CODE = "q_agree"
-AUTO_FILL_DATE_CODES = {"q_application_date"}
-
-
-class ConsentDeclinedError(Exception):
-    """Сигнализирует об отказе от согласия на обработку данных."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
-
-class IsAuthenticatedOrReadOnly(permissions.BasePermission):
-    """Заглушка для совместимости, доступ всем к GET."""
-
-    def has_permission(self, request, view) -> bool:  # type: ignore[override]
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.is_authenticated
-
-
-def _user_can_access(request, application: Application) -> bool:
-    """Проверяет, может ли пользователь или сессия управлять заявкой."""
-
-    if request.user.is_authenticated:
-        if request.user.is_staff or request.user == application.user:
-            return True
-    token = request.COOKIES.get("session_token")
-    if token and token == str(application.public_id):
-        return True
-    return False
-
 
 def _serialize_step(step: Optional[Step], answers: Dict[str, Any]) -> Optional[Step]:
+    """Формирует объект шага с подсчитанными видимыми вопросами."""
+
     if step is None:
         return None
     questions = [
@@ -96,6 +73,8 @@ def _serialize_step(step: Optional[Step], answers: Dict[str, Any]) -> Optional[S
 
 
 def _serialize_application(application: Application, answers: Dict[str, Any]) -> Dict[str, Any]:
+    """Готовит словарь с данными заявки и текущего шага."""
+
     step = _serialize_step(application.current_step, answers)
     return {
         "public_id": application.public_id,
@@ -121,19 +100,48 @@ def _ensure_default_answers(application: Application) -> None:
 
 
 def _get_application_queryset():
+    """Возвращает базовый queryset заявок с необходимыми связями."""
+
     return Application.objects.select_related("survey", "current_step", "user").prefetch_related(
         "answers__question",
     )
 
 
 def _get_application(public_id: uuid.UUID) -> Application:
+    """Ищет заявку по публичному идентификатору или отдаёт 404."""
+
     return get_object_or_404(_get_application_queryset(), public_id=public_id)
+
+
+def _get_application_by_token_or_session(public_id: uuid.UUID, request: HttpRequest) -> Optional[Application]:
+    """Пытается получить Application по public_id и session_token из куки."""
+    session_token = request.COOKIES.get(COOKIE_SESSION_TOKEN) # Получаем токен из куки
+    if not session_token:
+        return None # Если токен не найден, возвращаем None
+
+    # Пробуем найти Application по public_id и session_token
+    # Предполагаем, что session_token хранится в поле public_id, как в create_session
+    # ВАЖНО: В текущей модели Application НЕТ отдельного поля session_token.
+    # Мы используем тот факт, что в create_session токен устанавливается как public_id.
+    # Поэтому нам нужно найти Application с public_id, который совпадает с переданным public_id,
+    # и убедиться, что session_token (из куки) совпадает с public_id (из модели).
+    try:
+        application = _get_application_queryset().get(public_id=public_id)
+        # В текущей модели session_token не является отдельным полем, он совпадает с public_id
+        if str(application.public_id) == session_token:
+            return application
+        else:
+            return None # Токен из куки не совпадает с public_id модели
+    except Application.DoesNotExist:
+        return None
 
 
 def _apply_answer_patch(
     application: Application,
     items: List[Dict[str, Any]],
 ) -> List[Dict[str, str]]:
+    """Применяет патч с ответами и возвращает ошибки валидации."""
+
     if not items:
         return []
     serializer = AnswerPatchItemSerializer(data=items, many=True)
@@ -181,6 +189,8 @@ def _apply_answer_patch(
 
 
 def _set_current_step(application: Application, step_code: Optional[str]) -> None:
+    """Обновляет текущий шаг заявки по коду шага."""
+
     if not step_code:
         return
     step = get_object_or_404(Step, survey=application.survey, code=step_code)
@@ -190,6 +200,8 @@ def _set_current_step(application: Application, step_code: Optional[str]) -> Non
 
 
 def _update_stage_from_step(application: Application) -> None:
+    """Синхронизирует текущую стадию заявки с выбранным шагом."""
+
     if application.current_step:
         application.current_stage = application.current_step.order
     else:
@@ -198,6 +210,8 @@ def _update_stage_from_step(application: Application) -> None:
 
 
 def _validation_error(errors: List[Dict[str, str]]):
+    """Формирует ответ API с ошибками валидации."""
+
     return Response(
         {
             "detail": "Validation error",
@@ -214,6 +228,8 @@ def _validation_error(errors: List[Dict[str, str]]):
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def create_session(request, survey_code: str) -> Response:
+    """Создаёт черновик заявки и выдаёт cookie для продолжения."""
+
     survey = get_object_or_404(Survey.objects.filter(is_active=True), code=survey_code)
     current_step = survey.steps.order_by("order", "id").first()
     applicant_type = (request.data or {}).get("applicant_type") if isinstance(request.data, dict) else None
@@ -232,7 +248,7 @@ def create_session(request, survey_code: str) -> Response:
     serializer = DraftOutSerializer(payload)
     response = Response(serializer.data, status=HTTP_201_CREATED)
     response.set_cookie(
-        "session_token",
+        COOKIE_SESSION_TOKEN,
         str(application.public_id),
         httponly=True,
         samesite="Lax",
@@ -251,10 +267,22 @@ def create_session(request, survey_code: str) -> Response:
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def get_draft(request, public_id: uuid.UUID) -> Response:
-    application = _get_application(public_id)
-    if not _user_can_access(request, application):
-        return Response(status=HTTP_403_FORBIDDEN)
-    _ensure_default_answers(application)
+    """Возвращает заполненный черновик заявки по публичному ID."""
+
+    application = None
+    if request.user.is_authenticated:
+        # Логика для аутентифицированных пользователей
+        application = _get_application(public_id)
+        if not IsOwnerOrEmployee().has_object_permission(request, None, application):
+            raise PermissionDenied()
+    else:
+        # Логика для анонимных пользователей - по сессионной куке
+        application = _get_application_by_token_or_session(public_id, request)
+        if not application:
+            # Если не найдена по куке или кука отсутствует/некорректна
+            raise PermissionDenied()
+
+    # Теперь application получена, сериализуем как обычно
     answers = build_answer_dict(application)
     payload = _serialize_application(application, answers)
     serializer = DraftOutSerializer(payload)
@@ -265,9 +293,19 @@ def get_draft(request, public_id: uuid.UUID) -> Response:
 @api_view(["PATCH"])
 @permission_classes([permissions.AllowAny])
 def patch_draft(request, public_id: uuid.UUID) -> Response:
-    application = _get_application(public_id)
-    if not _user_can_access(request, application):
-        return Response(status=HTTP_403_FORBIDDEN)
+    """Обновляет ответы черновика и при необходимости меняет шаг."""
+
+    application = None
+    if request.user.is_authenticated:
+        application = _get_application(public_id)
+        if not IsOwnerOrEmployee().has_object_permission(request, None, application):
+            raise PermissionDenied()
+    else:
+        application = _get_application_by_token_or_session(public_id, request)
+        if not application:
+            raise PermissionDenied()
+
+    # Остальная логика как есть
     items = request.data.get("answers", []) if isinstance(request.data, dict) else []
     try:
         errors = _apply_answer_patch(application, items)
@@ -293,9 +331,19 @@ def patch_draft(request, public_id: uuid.UUID) -> Response:
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def post_next(request, public_id: uuid.UUID) -> Response:
-    application = _get_application(public_id)
-    if not _user_can_access(request, application):
-        return Response(status=HTTP_403_FORBIDDEN)
+    """Переходит к следующему шагу анкеты с сохранением ответов."""
+
+    application = None
+    if request.user.is_authenticated:
+        application = _get_application(public_id)
+        if not IsOwnerOrEmployee().has_object_permission(request, None, application):
+            raise PermissionDenied()
+    else:
+        application = _get_application_by_token_or_session(public_id, request)
+        if not application:
+            raise PermissionDenied()
+
+    # Остальная логика как есть
     if isinstance(request.data, dict) and request.data.get("answers"):
         try:
             errors = _apply_answer_patch(application, request.data["answers"])
@@ -337,9 +385,19 @@ def post_next(request, public_id: uuid.UUID) -> Response:
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def post_submit(request, public_id: uuid.UUID) -> Response:
-    application = _get_application(public_id)
-    if not _user_can_access(request, application):
-        return Response(status=HTTP_403_FORBIDDEN)
+    """Проверяет ответы и отправляет заявку на рассмотрение."""
+
+    application = None
+    if request.user.is_authenticated:
+        application = _get_application(public_id)
+        if not IsOwnerOrEmployee().has_object_permission(request, None, application):
+            raise PermissionDenied()
+    else:
+        application = _get_application_by_token_or_session(public_id, request)
+        if not application:
+            raise PermissionDenied()
+
+    # Остальная логика как есть
     if isinstance(request.data, dict) and request.data.get("answers"):
         try:
             errors = _apply_answer_patch(application, request.data["answers"])
@@ -365,14 +423,14 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
     change_status(
         application,
         Application.Status.SUBMITTED,
-        request.user if request.user.is_authenticated else None,
+        request.user, # или None, если анонимный
         request=request,
     )
     audit(
         action="submit",
         table_name="applications",
         record_id=application.public_id,
-        user=request.user if request.user.is_authenticated else None,
+        user=request.user, # или None, если анонимный
         request=request,
     )
     return Response(
@@ -390,20 +448,27 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def post_consent(request, public_id: uuid.UUID) -> Response:
-    application = _get_application(public_id)
-    if not _user_can_access(request, application):
-        return Response(status=HTTP_403_FORBIDDEN)
+    """Фиксирует согласие пользователя на обработку персональных данных."""
+
+    application = None
+    if request.user.is_authenticated:
+        application = _get_application(public_id)
+        if not IsOwnerOrEmployee().has_object_permission(request, None, application):
+            raise PermissionDenied()
+    else:
+        application = _get_application_by_token_or_session(public_id, request)
+        if not application:
+            raise PermissionDenied()
+
+    # Остальная логика как есть
     serializer = DataConsentSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    user = request.user if request.user.is_authenticated else application.user
-    if not user:
-        return Response(status=HTTP_403_FORBIDDEN)
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     ip_address = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR")
     consent = record_consent(
-        user=user,
+        user=request.user, # или None, если анонимный
         application=application,
-        consent_type=serializer.validated_data.get("consent_type", "pdn_152"),
+        consent_type=serializer.validated_data.get("consent_type", DEFAULT_CONSENT_TYPE),
         is_given=serializer.validated_data.get("is_given", True),
         ip_address=ip_address,
     )
@@ -411,7 +476,7 @@ def post_consent(request, public_id: uuid.UUID) -> Response:
         action="consent",
         table_name="consents",
         record_id=application.public_id,
-        user=user,
+        user=request.user, # или None, если анонимный
         request=request,
     )
     return Response(DataConsentSerializer(consent).data, status=HTTP_201_CREATED)
@@ -420,8 +485,8 @@ def post_consent(request, public_id: uuid.UUID) -> Response:
 class CommentPagination(PageNumberPagination):
     """Пагинация для комментариев."""
 
-    page_size = 20
-    max_page_size = 100
+    page_size = DEFAULT_PAGE_SIZE
+    max_page_size = MAX_PAGE_SIZE
 
 
 @extend_schema_view(
@@ -432,24 +497,29 @@ class CommentPagination(PageNumberPagination):
     ),
 )
 @api_view(["GET", "POST"])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 def application_comments(request, public_id: uuid.UUID) -> Response:
+    """Возвращает список комментариев или создаёт новый комментарий к заявке."""
+
     application = _get_application(public_id)
-    if not _user_can_access(request, application):
-        return Response(status=HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
+        if not IsOwnerOrEmployee().has_object_permission(request, None, application):
+            raise PermissionDenied()
         queryset = application.comments.select_related("user").order_by("-created_at")
         paginator = CommentPagination()
         page = paginator.paginate_queryset(queryset, request)
         serializer = ApplicationCommentOutSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    if not IsEmployeeOrAdmin().has_permission(request, None):
+        raise PermissionDenied()
+
     serializer = ApplicationCommentInSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     comment = add_comment(
         application,
-        request.user if request.user.is_authenticated else None,
+        request.user,
         serializer.validated_data["comment"],
         is_urgent=serializer.validated_data.get("is_urgent", False),
         request=request,

@@ -35,18 +35,28 @@ class AbstractDocumentStorage:
         content_type: str,
         max_size: int,
     ) -> PresignedUpload:
+        """Возвращает параметры для клиентской загрузки файла."""
+
         raise NotImplementedError
 
     def generate_download(self, *, key: str, expires_in: Optional[int] = None) -> PresignedDownload:
+        """Генерирует параметры для скачивания файла по временной ссылке."""
+
         raise NotImplementedError
 
     def delete_object(self, *, key: str) -> None:
+        """Удаляет объект из хранилища по ключу."""
+
         raise NotImplementedError
 
     def read_object(self, *, key: str) -> bytes:
+        """Читает содержимое объекта и возвращает байты."""
+
         raise NotImplementedError
 
     def upload_bytes(self, *, key: str, content: bytes, content_type: str) -> None:
+        """Сохраняет переданные байты в хранилище."""
+
         raise NotImplementedError
 
 
@@ -67,6 +77,8 @@ class S3DocumentStorage(AbstractDocumentStorage):
         signature_version: Optional[str] = None,
         addressing_style: Optional[str] = None,
     ) -> None:
+        """Создаёт клиент S3 с заданными параметрами и проверяет конфигурацию."""
+
         if not bucket:
             raise DocumentStorageError("Не указан bucket для документохранилища")
         try:
@@ -109,6 +121,8 @@ class S3DocumentStorage(AbstractDocumentStorage):
         content_type: str,
         max_size: int,
     ) -> PresignedUpload:
+        """Возвращает presigned POST для загрузки файла в S3."""
+
         fields = {"Content-Type": content_type}
         conditions = [
             {"bucket": self._bucket},
@@ -131,6 +145,8 @@ class S3DocumentStorage(AbstractDocumentStorage):
         )
 
     def generate_download(self, *, key: str, expires_in: Optional[int] = None) -> PresignedDownload:
+        """Формирует presigned URL для скачивания файла."""
+
         url = self._client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self._bucket, "Key": key},
@@ -139,9 +155,13 @@ class S3DocumentStorage(AbstractDocumentStorage):
         return PresignedDownload(url=url, method="GET", headers={})
 
     def delete_object(self, *, key: str) -> None:
+        """Удаляет объект из S3."""
+
         self._client.delete_object(Bucket=self._bucket, Key=key)
 
     def read_object(self, *, key: str) -> bytes:
+        """Читает объект из S3 и возвращает его содержимое."""
+
         response = self._client.get_object(Bucket=self._bucket, Key=key)
         body = response.get("Body")
         if body is None:
@@ -149,6 +169,8 @@ class S3DocumentStorage(AbstractDocumentStorage):
         return body.read()
 
     def upload_bytes(self, *, key: str, content: bytes, content_type: str) -> None:
+        """Сохраняет данные напрямую в бакет S3."""
+
         try:
             self._client.put_object(
                 Bucket=self._bucket,

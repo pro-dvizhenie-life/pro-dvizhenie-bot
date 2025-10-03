@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 
 from config.constants import (
+    MAGIC_LINK_TOKEN_HASH_LENGTH,
     USER_CHOICE_MAX_LENGTH,
     USER_EMAIL_MAX_LENGTH,
     USER_PHONE_MAX_LENGTH,
@@ -23,6 +24,8 @@ class UserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, email: str, password: str | None, **extra_fields):
+        """Создаёт и сохраняет пользователя с переданными данными."""
+
         if not email:
             raise ValueError('Необходимо указать адрес электронной почты.')
         phone = extra_fields.pop('phone', None)
@@ -41,6 +44,8 @@ class UserManager(BaseUserManager):
         password: str | None = None,
         **extra_fields
     ):
+        """Создаёт обычного пользователя без прав администратора."""
+
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
         extra_fields.setdefault('role', User.Role.APPLICANT)
@@ -52,6 +57,8 @@ class UserManager(BaseUserManager):
         password: str | None = None,
         **extra_fields
     ):
+        """Создаёт суперпользователя с обязательными флагами доступа."""
+
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
@@ -175,12 +182,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ('-created_at',)
 
     def __str__(self) -> str:
+        """Возвращает читаемое представление пользователя."""
+
         return self.email
 
     def get_full_name(self) -> str:
+        """Возвращает полное имя пользователя для административных нужд."""
+
         return self.email
 
     def get_short_name(self) -> str:
+        """Возвращает краткое отображаемое имя пользователя."""
+
         return self.email
 
 
@@ -198,6 +211,8 @@ class MagicLinkTokenManager(models.Manager):
     """Менеджер токенов входа по magic link."""
 
     def get_queryset(self):
+        """Возвращает базовый queryset с пользовательским API."""
+
         return MagicLinkTokenQuerySet(self.model, using=self._db)
 
     def verify(self, raw_token: str) -> "MagicLinkToken | None":
@@ -233,7 +248,7 @@ class MagicLinkToken(models.Model):
     )
     token_hash = models.CharField(
         verbose_name="Хеш токена",
-        max_length=64,
+        max_length=MAGIC_LINK_TOKEN_HASH_LENGTH,
         unique=True,
     )
     created_at = models.DateTimeField(
@@ -280,4 +295,6 @@ class MagicLinkToken(models.Model):
         self.save(update_fields=update_fields)
 
     def __str__(self) -> str:
+        """Строковое представление токена для отладки."""
+
         return f"Magic link for {self.user_id} (expires {self.expires_at:%Y-%m-%d %H:%M})"

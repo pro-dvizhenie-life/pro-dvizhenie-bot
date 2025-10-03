@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 
 def _str_to_bool(value: str | None, default: bool) -> bool:
+    """Интерпретирует строку как булево значение с поддержкой флагов окружения."""
+
     if value is None:
         return default
     return value.strip().lower() in {'1', 'true', 'yes', 'on'}
