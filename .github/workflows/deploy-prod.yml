@@ -39,7 +39,6 @@ jobs:
           remote_user: user8
           remote_key: ${{ secrets.SSH_KEY }}
           remote_port: ${{ secrets.SSH_PORT }}
-          rsh: 'ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no'
 
       - name: Apply docker compose
         uses: appleboy/ssh-action@v1
