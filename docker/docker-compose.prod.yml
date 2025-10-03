@@ -20,12 +20,14 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ../.env
+      - ../.env.prod
     volumes:
-      - ../.env:/app/.env:ro
+      - ../.env.prod:/app/.env:ro
+      - ../backend/staticfiles:/app/backend/staticfiles
+      - ../backend/media:/app/backend/media
     environment:
       DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: "127.0.0.1,0.0.0.0,localhost,51.250.113.76"
+      DJANGO_ALLOWED_HOSTS: "pro-dvizhenie.51-250-113-76.sslip.io,51.250.113.76,localhost,127.0.0.1,0.0.0.0"
       DJANGO_COLLECTSTATIC: "1"
       POSTGRES_HOST: db
       POSTGRES_DB: dvizhenie
@@ -43,9 +45,9 @@ services:
       dockerfile: Dockerfile
     container_name: dvizhenie-bot
     env_file:
-      - ../.env
+      - ../.env.prod
     volumes:
-      - ../.env:/app/.env:ro
+      - ../.env.prod:/app/.env:ro
     environment:
       DJANGO_DEBUG: "0"
       POSTGRES_HOST: db
