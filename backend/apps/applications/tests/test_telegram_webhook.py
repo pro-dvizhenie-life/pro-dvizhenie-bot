@@ -30,7 +30,7 @@ class TelegramWebhookTests(SimpleTestCase):
         fake_application = SimpleNamespace(bot=None, process_update=AsyncMock())
         payload = {"update_id": 101}
         with patch(
-            "applications.bots.webhooks.telegram_webhook._ensure_application_ready",
+            "applications.bots.telegram.webhook._ensure_application_ready",
             new=AsyncMock(return_value=fake_application),
         ):
             response = self.client.post(

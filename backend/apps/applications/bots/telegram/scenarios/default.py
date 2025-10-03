@@ -1,4 +1,4 @@
-"""Default scenario orchestrating the Telegram questionnaire flow."""
+"""Основной сценарий Telegram-бота, ведущий пользователя по анкете."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ AUTO_FILL_DATE_QUESTIONS = {"q_application_date"}
 
 @dataclass
 class ActiveQuestion:
-    """Container for the next question a user should answer."""
+    """Контейнер для следующего вопроса, ожидающего ответа."""
 
     question: Question
     step: Step
@@ -52,16 +52,20 @@ class ActiveQuestion:
 
 
 class DocumentIngestionError(RuntimeError):
-    """Raised when Telegram file cannot be persisted."""
+    """Возникает, если файл из Telegram не удалось сохранить."""
 
 
 class DefaultScenario:
-    """Conversation scenario that reuses the dynamic form runtime."""
+    """Сценарий диалога, использующий динамическую анкету проекта."""
 
     def __init__(self, survey_code: str = "default") -> None:
+        """Запоминает код анкеты, с которой работает бот."""
+
         self.survey_code = survey_code
 
     async def handle_start(self, update: "Update", context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Приветствует пользователя и запускает процесс анкеты."""
+
         chat = update.effective_chat
         telegram_user = update.effective_user
         if not chat or not telegram_user:
@@ -81,6 +85,8 @@ class DefaultScenario:
         await self._prompt_next_question(chat.id, application, context)
 
     async def handle_help(self, update: "Update", context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Показывает подсказку по командам и процессу заполнения."""
+
         chat = update.effective_chat
         if not chat:
             return
@@ -94,6 +100,8 @@ class DefaultScenario:
         await context.bot.send_message(chat_id=chat.id, text=help_text)
 
     async def handle_text(self, update: "Update", context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Обрабатывает свободный текст пользователя как ответ на вопрос."""
+
         message = update.effective_message
         telegram_user = update.effective_user
         chat = update.effective_chat
@@ -135,6 +143,8 @@ class DefaultScenario:
         await self._after_answer(chat.id, application, context)
 
     async def handle_callback(self, update: "Update", context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Обрабатывает нажатия на inline-кнопки и обновляет состояние."""
+
         query = update.callback_query
         telegram_user = update.effective_user
         chat = update.effective_chat
@@ -181,6 +191,8 @@ class DefaultScenario:
         await self._after_answer(chat.id, application, context)
 
     async def handle_document(self, update: "Update", context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Принимает файлы из Telegram и сохраняет их в анкету."""
+
         message = update.effective_message
         telegram_user = update.effective_user
         chat = update.effective_chat
@@ -225,27 +237,40 @@ class DefaultScenario:
         await self._after_answer(chat.id, application, context)
 
     async def _ensure_user(self, telegram_user) -> Any:
+        """Находит или создаёт Django-пользователя для Telegram-аккаунта."""
+
         return await sync_to_async(self._ensure_user_sync, thread_sensitive=True)(telegram_user)
 
     async def _ensure_application(self, user: Any) -> Application:
+        """Создаёт или возвращает активную заявку пользователя."""
+
         return await sync_to_async(self._ensure_application_sync, thread_sensitive=True)(user)
 
     async def _resolve_active_question(self, application: Application) -> Optional[ActiveQuestion]:
+        """Возвращает следующий вопрос, который нужно задать пользователю."""
+
         return await sync_to_async(
             self._resolve_active_question_sync,
             thread_sensitive=True,
         )(application)
 
     async def _save_answer(self, application: Application, question: Question, value: Any) -> None:
+        """Сохраняет ответ пользователя в хранилище анкет."""
+
         await sync_to_async(self._save_answer_sync, thread_sensitive=True)(application, question, value)
 
     async def _restart_application(self, application: Application) -> Application:
+        """Пересоздаёт заявку после запроса пользователя."""
+
         return await sync_to_async(self._restart_application_sync, thread_sensitive=True)(application)
 
     async def _get_question(self, application: Application, code: str) -> Optional[Question]:
+        """Ищет вопрос по коду внутри текущей заявки."""
+
         return await sync_to_async(self._get_question_sync, thread_sensitive=True)(application, code)
 
     async def _after_answer(self, chat_id: int, application: Application, context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Выполняет действие метода _after_answer."""
         logger.debug("_after_answer chat=%s application=%s", chat_id, application.pk)
         await sync_to_async(self._touch_activity, thread_sensitive=True)(application)
         await self._prompt_next_question(chat_id, application, context)
@@ -256,6 +281,8 @@ class DefaultScenario:
         application: Application,
         context: "ContextTypes.DEFAULT_TYPE",
     ) -> None:
+        """Отправляет пользователю сообщение с очередным вопросом анкеты."""
+
         active = await self._resolve_active_question(application)
         if active is None:
             logger.debug("_prompt_next_question: no more questions")
@@ -283,6 +310,7 @@ class DefaultScenario:
             await context.bot.send_message(chat_id=chat_id, text=prompt)
 
     def _ensure_user_sync(self, telegram_user) -> Any:
+        """Выполняет действие метода _ensure_user_sync."""
         UserModel = get_user_model()
         chat_id = telegram_user.id
         username = telegram_user.username
@@ -319,6 +347,7 @@ class DefaultScenario:
         return user
 
     def _ensure_application_sync(self, user: Any) -> Application:
+        """Выполняет действие метода _ensure_application_sync."""
         survey = Survey.objects.filter(code=self.survey_code, is_active=True).first()
         if survey is None:
             raise RuntimeError("Активная анкета не найдена")
@@ -341,6 +370,7 @@ class DefaultScenario:
         return application
 
     def _resolve_active_question_sync(self, application: Application) -> Optional[ActiveQuestion]:
+        """Выполняет действие метода _resolve_active_question_sync."""
         answers = build_answer_dict(application)
         step = application.current_step
         if step is None:
@@ -366,6 +396,7 @@ class DefaultScenario:
         return None
 
     def _get_question_sync(self, application: Application, code: str) -> Optional[Question]:
+        """Выполняет действие метода _get_question_sync."""
         return (
             Question.objects.filter(step__survey=application.survey, code=code)
             .select_related("step")
@@ -374,6 +405,7 @@ class DefaultScenario:
         )
 
     def _save_answer_sync(self, application: Application, question: Question, value: Any) -> None:
+        """Выполняет действие метода _save_answer_sync."""
         with transaction.atomic():
             Answer.objects.update_or_create(
                 application=application,
@@ -384,6 +416,7 @@ class DefaultScenario:
             ensure_applicant_account(application, answers)
 
     def _restart_application_sync(self, application: Application) -> Application:
+        """Выполняет действие метода _restart_application_sync."""
         survey = application.survey
         user = application.user
         applicant_type = application.applicant_type
@@ -421,6 +454,7 @@ class DefaultScenario:
         return new_application
 
     async def _finalize_consent_decline(self, application: Application) -> None:
+        """Выполняет действие метода _finalize_consent_decline."""
         await sync_to_async(handle_consent_decline, thread_sensitive=True)(application)
 
     async def _ingest_document(
@@ -430,6 +464,7 @@ class DefaultScenario:
         payload: dict[str, Any],
         context: "ContextTypes.DEFAULT_TYPE",
     ) -> str:
+        """Выполняет действие метода _ingest_document."""
         filename, mime_type, content = await self._download_file(question, payload, context)
         size = len(content)
         requirement_code = self._requirement_code_for_question(question)
@@ -445,6 +480,7 @@ class DefaultScenario:
         payload: dict[str, Any],
         context: "ContextTypes.DEFAULT_TYPE",
     ) -> tuple[str, str, bytes]:
+        """Выполняет действие метода _download_file."""
         file_id = payload.get("file_id")
         if not file_id:
             raise DocumentIngestionError("Не удалось определить файл для загрузки.")
@@ -470,6 +506,7 @@ class DefaultScenario:
         size: int,
         content: bytes,
     ) -> str:
+        """Выполняет действие метода _store_document_binary."""
         requirement = None
         if requirement_code:
             requirement = application.survey.doc_requirements.filter(code=requirement_code).first()
@@ -502,15 +539,19 @@ class DefaultScenario:
         return str(bundle.document.public_id)
 
     def _touch_activity(self, application: Application) -> None:
+        """Выполняет действие метода _touch_activity."""
         Application.objects.filter(pk=application.pk).update(updated_at=timezone.now())
 
     async def _validate_answer(self, question: Question, raw_value: Any) -> tuple[Any, Optional[str]]:
+        """Выполняет действие метода _validate_answer."""
         return await sync_to_async(validate_answer_value, thread_sensitive=True)(question, raw_value)
 
     async def _prepare_freeform_input(self, question: Question, text: str) -> Tuple[Any, Optional[str]]:
+        """Выполняет действие метода _prepare_freeform_input."""
         return await sync_to_async(self._prepare_freeform_input_sync, thread_sensitive=True)(question, text)
 
     def _prepare_freeform_input_sync(self, question: Question, text: str) -> Tuple[Any, Optional[str]]:
+        """Выполняет действие метода _prepare_freeform_input_sync."""
         if question.type in {Question.QType.BOOLEAN, Question.QType.YES_NO}:
             mapped = self._map_boolean(text)
             if mapped is None:
@@ -534,6 +575,7 @@ class DefaultScenario:
         return text, None
 
     def _prepare_choice_input(self, question: Question, raw_value: str) -> Any:
+        """Выполняет действие метода _prepare_choice_input."""
         if question.type in {Question.QType.BOOLEAN, Question.QType.YES_NO}:
             return raw_value.lower() in {"true", "1", "yes", "da"}
         if question.type in {Question.QType.MULTISELECT, Question.QType.SELECT_MANY}:
@@ -541,6 +583,7 @@ class DefaultScenario:
         return raw_value
 
     def _build_keyboard(self, question: Question) -> Optional[Any]:
+        """Выполняет действие метода _build_keyboard."""
         try:
             InlineKeyboardButton, InlineKeyboardMarkup = _load_keyboard_classes()
         except RuntimeError as exc:
@@ -575,21 +618,25 @@ class DefaultScenario:
 
     @staticmethod
     def _should_skip(text: str) -> bool:
+        """Выполняет действие метода _should_skip."""
         lowered = text.lower()
         return lowered in {"пропустить", "skip", "позже"}
 
     @staticmethod
     def _is_answer_missing(value: Any) -> bool:
+        """Выполняет действие метода _is_answer_missing."""
         return value in (None, "", [], {})
 
     @staticmethod
     def _parse_callback_payload(payload: str) -> Tuple[Optional[str], Optional[str]]:
+        """Выполняет действие метода _parse_callback_payload."""
         if "|" not in payload:
             return None, None
         return tuple(payload.split("|", 1))  # type: ignore[return-value]
 
     @staticmethod
     def _map_boolean(text: str) -> Optional[bool]:
+        """Выполняет действие метода _map_boolean."""
         normalized = text.strip().lower()
         if normalized in {"да", "д", "yes", "y", "true", "1"}:
             return True
@@ -599,6 +646,7 @@ class DefaultScenario:
 
     @staticmethod
     def _normalize_date(text: str) -> Optional[str]:
+        """Выполняет действие метода _normalize_date."""
         cleaned = text.strip()
         for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
             try:
@@ -609,6 +657,7 @@ class DefaultScenario:
 
     @staticmethod
     def _map_option_value(question: Question, text: str) -> Optional[str]:
+        """Выполняет действие метода _map_option_value."""
         token = text.strip().lower()
         for option in question.options.all():
             if token == option.value.lower() or token == option.label.lower():
@@ -617,6 +666,7 @@ class DefaultScenario:
 
     @staticmethod
     def _map_multiple_options(question: Question, text: str) -> Optional[list[str]]:
+        """Выполняет действие метода _map_multiple_options."""
         items = [part.strip() for part in text.split(",") if part.strip()]
         if not items:
             return None
@@ -631,6 +681,7 @@ class DefaultScenario:
 
     @staticmethod
     def _extract_file_payload(message: Any) -> Optional[dict[str, Any]]:
+        """Выполняет действие метода _extract_file_payload."""
         if message.document:
             document = message.document
             return {
@@ -668,6 +719,7 @@ class DefaultScenario:
 
     @staticmethod
     def _guess_extension(payload: dict[str, Any]) -> str:
+        """Выполняет действие метода _guess_extension."""
         payload_type = payload.get("type")
         if payload_type == "photo":
             return ".jpg"
@@ -677,6 +729,7 @@ class DefaultScenario:
 
     @staticmethod
     def _requirement_code_for_question(question: Question) -> Optional[str]:
+        """Выполняет действие метода _requirement_code_for_question."""
         code = question.code
         if code.startswith("q_doc_"):
             return code.removeprefix("q_doc_")
@@ -685,6 +738,7 @@ class DefaultScenario:
         return None
 
     def _render_question_prompt(self, question: Question) -> str:
+        """Выполняет действие метода _render_question_prompt."""
         parts: list[str] = [question.label]
         payload = question.payload or {}
         help_text = payload.get("help_text")
@@ -713,6 +767,7 @@ class DefaultScenario:
         return "\n".join(filter(None, parts))
 
     def _auto_fill_question(self, application: Application, question: Question, answers: dict[str, Any]) -> bool:
+        """Выполняет действие метода _auto_fill_question."""
         payload = question.payload or {}
         if payload.get("hidden") and question.type != Question.QType.FILE and question.type != Question.QType.FILE_MULTI:
             # hidden non-file questions should be auto-filled if possible
@@ -741,6 +796,7 @@ class DefaultScenario:
 
 
 def _load_keyboard_classes():
+    """Выполняет действие метода _load_keyboard_classes."""
     try:
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup  # type: ignore
     except ImportError as exc:  # pragma: no cover - dependency missing only at runtime

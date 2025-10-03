@@ -1,14 +1,13 @@
 import logging
 
-from apps.applications.bots.handlers.telegram_handlers.keyboards import resume_keyboard
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from backend.apps.applications.bots.database import init_telegram_db
-from backend.apps.applications.bots.telegram_models import TelegramUser as User
-from backend.apps.applications.bots.telegram_models import UserState
-
+from ..database import init_telegram_db
+from ..models import TelegramUser as User
+from ..models import UserState
 from .form import get_or_create_user, save_user
+from .keyboards import resume_keyboard
 
 logger = logging.getLogger(__name__)
 

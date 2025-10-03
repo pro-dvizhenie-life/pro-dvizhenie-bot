@@ -4,24 +4,28 @@
 ├── apps.py
 ├── bots
 │   ├── __init__.py
-│   ├── database.py
 │   ├── handlers
 │   │   ├── __init__.py
-│   │   ├── telegram_handler.py
 │   │   ├── telegram_handlers
 │   │   │   ├── __init__.py
-│   │   │   ├── documents.py
-│   │   │   ├── form.py
-│   │   │   ├── help.py
-│   │   │   ├── keyboards.py
-│   │   │   ├── preview.py
-│   │   │   └── start.py
-│   │   └── web_handler.py
-│   ├── scenarios
-│   │   └── default_scenario.py
-│   ├── telegram_models.py
-│   └── webhooks
-│       └── telegram_webhook.py
+│   │   │   └── web_handler.py
+│   └── telegram
+│       ├── __init__.py
+│       ├── app.py
+│       ├── database.py
+│       ├── models.py
+│       ├── webhook.py
+│       ├── handlers
+│       │   ├── __init__.py
+│       │   ├── documents.py
+│       │   ├── form.py
+│       │   ├── help.py
+│       │   ├── keyboards.py
+│       │   ├── preview.py
+│       │   └── start.py
+│       └── scenarios
+│           ├── __init__.py
+│           └── default.py
 ├── fixtures
 │   ├── README.md
 │   ├── __init__.py
@@ -36,14 +40,15 @@
 │   └── commands
 │       ├── __init__.py
 │       ├── load_default_survey.py
-│       └── load_fixtures.py
+│       ├── load_fixtures.py
+│       ├── run_bot_simple.py
+│       └── run_telegram_bot.py
 ├── migrations
 │   ├── 0001_initial.py
 │   ├── 0002_schema_sync.py
 │   ├── 0003_alter_question_type.py
 │   └── __init__.py
 ├── models.py
-├── project_structure.txt
 ├── serializers.py
 ├── services
 │   ├── application_service.py
@@ -58,7 +63,8 @@
 │   └── application_filters.py
 ├── tests
 │   ├── __init__.py
-│   └── test_export_services.py
+│   ├── test_export_services.py
+│   └── test_telegram_webhook.py
 ├── urls.py
 └── views
     ├── __init__.py
@@ -67,4 +73,4 @@
     ├── bot_views.py
     └── export_views.py
 
-14 directories, 53 files
+15 directories, 54 files

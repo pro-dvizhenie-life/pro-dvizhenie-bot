@@ -15,9 +15,9 @@ print("🔧 Исправление импортов...")
 
 # Временно заменим проблемные файлы
 problem_files = [
-    "apps/applications/bots/handlers/telegram_handlers/form.py",
-    "apps/applications/bots/handlers/telegram_handlers/documents.py",
-    "apps/applications/bots/handlers/telegram_handlers/preview.py"
+    "apps/applications/bots/telegram/handlers/form.py",
+    "apps/applications/bots/telegram/handlers/documents.py",
+    "apps/applications/bots/telegram/handlers/preview.py"
 ]
 
 for file_path in problem_files:
@@ -28,14 +28,14 @@ for file_path in problem_files:
 
         # Заменяем проблемные импорты
         new_content = content.replace(
-            "from ....bots.telegram_models",
-            "from apps.applications.bots.telegram_models"
+            "from ....bots.telegram.models",
+            "from apps.applications.bots.telegram.models"
         ).replace(
-            "from ....bots.database",
-            "from apps.applications.bots.database"
+            "from ....bots.telegram.database",
+            "from apps.applications.bots.telegram.database"
         ).replace(
             "from .keyboards",
-            "from apps.applications.bots.handlers.telegram_handlers.keyboards"
+            "from apps.applications.bots.telegram.handlers.keyboards"
         )
 
         if content != new_content:

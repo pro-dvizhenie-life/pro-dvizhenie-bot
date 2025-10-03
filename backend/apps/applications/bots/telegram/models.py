@@ -18,6 +18,8 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 class UserState(enum.Enum):
+    """Состояния пользователя в процессе диалога с ботом."""
+
     START = 'START'
     WAITING_FOR_CONSENT = 'WAITING_FOR_CONSENT'
     WAITING_FOR_APPLICANT_STATUS = 'WAITING_FOR_APPLICANT_STATUS'
@@ -140,4 +142,6 @@ class TelegramUser(Base):
     resume_token = Column(String(64), unique=True)
 
     def __repr__(self):
+        """Возвращает удобочитаемое представление Telegram-пользователя."""
+
         return f"<TelegramUser(chat_id={self.chat_id}, state={self.state})>"

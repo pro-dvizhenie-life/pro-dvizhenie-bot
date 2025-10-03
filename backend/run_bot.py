@@ -81,9 +81,7 @@ def main():
 
         # Импортируем бота - ТЕПЕРЬ ПРАВИЛЬНЫЙ ПУТЬ
         try:
-            from apps.applications.bots.handlers.telegram_handlers.telegram_handler import (
-                telegram_bot,
-            )
+            from apps.applications.bots.telegram import telegram_bot
             logger.info("✅ Бот успешно импортирован")
         except ImportError as e:
             logger.error(f"❌ Ошибка импорта бота: {e}")

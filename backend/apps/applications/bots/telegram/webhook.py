@@ -1,4 +1,4 @@
-"""Webhook endpoint helpers for Telegram integration."""
+"""Вспомогательные функции вебхука для интеграции с Telegram."""
 
 from __future__ import annotations
 
@@ -8,9 +8,7 @@ import logging
 from http import HTTPStatus
 from typing import Any
 
-from applications.bots.handlers.telegram_handlers.telegram_handler import (
-    telegram_bot,
-)
+from applications.bots.telegram import telegram_bot
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -21,7 +19,7 @@ _application_started = False
 
 
 async def _ensure_application_ready() -> Any:
-    """Initialise telegram Application lazily for webhook usage."""
+    """Лениво инициализирует приложение Telegram для работы вебхука."""
 
     global _application_started
     async with _initialise_lock:
@@ -38,7 +36,7 @@ async def _ensure_application_ready() -> Any:
 
 @csrf_exempt
 async def telegram_webhook(request: HttpRequest) -> HttpResponse:
-    """Receive updates from Telegram and process them via PTB application."""
+    """Принимает обновления Telegram и передаёт их приложению PTB."""
 
     if request.method != "POST":
         return HttpResponse(status=HTTPStatus.METHOD_NOT_ALLOWED)

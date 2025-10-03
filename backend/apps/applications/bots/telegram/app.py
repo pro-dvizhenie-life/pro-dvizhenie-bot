@@ -1,11 +1,11 @@
-"""Telegram bot entry-point wiring scenario handlers."""
+"""Точка входа Telegram-бота и привязка обработчиков сценария."""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from applications.bots.scenarios.default_scenario import DefaultScenario
+from applications.bots.telegram.scenarios import DefaultScenario
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 def _require_ptb_components():
+    """Импортирует компоненты python-telegram-bot и возвращает их."""
+
     try:
         from telegram import Update
         from telegram.ext import (
@@ -31,9 +33,11 @@ def _require_ptb_components():
 
 
 class TelegramBot:
-    """Configures telegram-ext application and delegates to the scenario."""
+    """Настраивает приложение telegram-ext и делегирует обработку сценарию."""
 
     def __init__(self) -> None:
+        """Инициализирует бота и базовые зависимости."""
+
         self.token: Optional[str] = getattr(settings, "TELEGRAM_BOT_TOKEN", None)
         self.application = None
         self.scenario = DefaultScenario()
@@ -41,6 +45,8 @@ class TelegramBot:
             logger.warning("TELEGRAM_BOT_TOKEN не найден в настройках Django")
 
     def setup_handlers(self) -> None:
+        """Регистрирует обработчики команд, сообщений и ошибок."""
+
         if self.application is None:
             raise RuntimeError("Application instance is not initialised")
         _, _, CallbackQueryHandler, CommandHandler, MessageHandler, filters = _require_ptb_components()
@@ -63,6 +69,8 @@ class TelegramBot:
         logger.info("Telegram handlers configured")
 
     async def error_handler(self, update: object, context: "ContextTypes.DEFAULT_TYPE") -> None:
+        """Отправляет сообщение об ошибке и пишет лог."""
+
         update_payload = update.to_dict() if hasattr(update, "to_dict") else repr(update)
         logger.exception(
             "Ошибка в Telegram боте: %s | update=%s",
@@ -81,12 +89,16 @@ class TelegramBot:
                 logger.debug("Не удалось уведомить пользователя об ошибке", exc_info=True)
 
     def _build_application(self) -> None:
+        """Создаёт экземпляр приложения telegram-ext."""
+
         _, ApplicationCls, *_ = _require_ptb_components()
         if not self.token:
             raise ValueError("TELEGRAM_BOT_TOKEN не настроен")
         self.application = ApplicationCls.builder().token(self.token).build()
 
     def start_polling(self) -> None:
+        """Запускает бота в режиме polling."""
+
         Update, *_ = _require_ptb_components()
         self._build_application()
         self.setup_handlers()
@@ -99,6 +111,8 @@ class TelegramBot:
         )
 
     def create_webhook_app(self):
+        """Готовит приложение для работы через webhook."""
+
         self._build_application()
         self.setup_handlers()
         logger.info("Webhook-приложение Telegram собрано")

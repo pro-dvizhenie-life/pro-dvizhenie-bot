@@ -3,7 +3,6 @@ Management команда для запуска Telegram бота.
 Использование: python manage.py run_telegram_bot
 """
 
-import os
 import signal
 import sys
 
@@ -11,23 +10,10 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 try:
-    from ....bots.handlers.telegram_handler import telegram_bot
+    from apps.applications.bots.telegram import telegram_bot
 except ImportError as e:
-    print(f"❌ Ошибка импорта: {e}")
-    print("🛠️ Пробуем альтернативный импорт...")
-    try:
-        # Альтернативный путь
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "telegram_handler",
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "bots", "handlers", "telegram_handler.py")
-        )
-        telegram_handler = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(telegram_handler)
-        telegram_bot = telegram_handler.telegram_bot
-    except Exception as e2:
-        print(f"❌ Альтернативный импорт тоже не сработал: {e2}")
-        raise
+    print(f"❌ Ошибка импорта Telegram бота: {e}")
+    raise
 
 
 class Command(BaseCommand):

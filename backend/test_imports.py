@@ -24,12 +24,12 @@ except Exception as e:
 imports_to_check = [
     ("telegram", "Update"),
     ("telegram.ext", "Application"),
-    ("apps.applications.bots.telegram_models", "TelegramUser"),
-    ("apps.applications.bots.database", "init_telegram_db"),
-    ("apps.applications.bots.handlers.telegram_handlers.start", "start"),
-    ("apps.applications.bots.handlers.telegram_handlers.help", "help_command"),
-    ("apps.applications.bots.handlers.telegram_handlers.form", "form_entry"),
-    ("apps.applications.bots.handlers.telegram_handlers.telegram_handler", "telegram_bot"),
+    ("apps.applications.bots.telegram.models", "TelegramUser"),
+    ("apps.applications.bots.telegram.database", "init_telegram_db"),
+    ("apps.applications.bots.telegram.handlers.start", "start"),
+    ("apps.applications.bots.telegram.handlers.help", "help_command"),
+    ("apps.applications.bots.telegram.handlers.form", "form_entry"),
+    ("apps.applications.bots.telegram", "telegram_bot"),
 ]
 
 for module_path, item_name in imports_to_check:
