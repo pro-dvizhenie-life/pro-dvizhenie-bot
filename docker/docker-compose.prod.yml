@@ -25,7 +25,7 @@ services:
       - ../.env:/app/.env:ro
     environment:
       DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: "example.com"
+      DJANGO_ALLOWED_HOSTS: "127.0.0.1,0.0.0.0,localhost,51.250.113.76"
       DJANGO_COLLECTSTATIC: "1"
       POSTGRES_HOST: db
       POSTGRES_DB: dvizhenie
