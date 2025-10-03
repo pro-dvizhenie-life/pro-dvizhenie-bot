@@ -17,6 +17,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: SSH sanity check (whoami@host)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            echo "Connected as: $(whoami)"
+            hostname
+
       - name: Sync project to remote host
         uses: burnett01/rsync-deployments@7.1.0
         with:
@@ -24,9 +36,10 @@ jobs:
           path: ./
           remote_path: ${{ secrets.REMOTE_PATH }}
           remote_host: ${{ secrets.SSH_HOST }}
-          remote_user: ${{ secrets.SSH_USER }}
+          remote_user: user8
           remote_key: ${{ secrets.SSH_KEY }}
           remote_port: ${{ secrets.SSH_PORT }}
+          rsh: 'ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no'
 
       - name: Apply docker compose
         uses: appleboy/ssh-action@v1
