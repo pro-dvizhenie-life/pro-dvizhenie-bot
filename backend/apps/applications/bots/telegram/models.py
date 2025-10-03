@@ -17,6 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 class UserState(enum.Enum):
     """Состояния пользователя в процессе диалога с ботом."""
 

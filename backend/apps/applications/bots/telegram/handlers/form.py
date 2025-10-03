@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Инициализация БД
 SessionLocal = init_telegram_db()
 
+
 def get_or_create_user(chat_id: int) -> User:
     """Получает или создаёт пользователя в базе данных бота."""
     try:
@@ -35,6 +36,7 @@ def get_or_create_user(chat_id: int) -> User:
         logger.error(f"Ошибка при получении пользователя {chat_id}: {e}")
         raise
 
+
 def save_user(user: User):
     """Фиксирует изменения пользователя в базе данных бота."""
     try:
@@ -45,6 +47,7 @@ def save_user(user: User):
     except Exception as e:
         logger.error(f"Ошибка при сохранении пользователя {user.chat_id}: {e}")
         raise
+
 
 async def form_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Точка входа в анкету через команду /form."""
@@ -62,8 +65,9 @@ async def form_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Вы уже начали или завершили заполнение анкеты. Для продолжения используйте /start или /help."
         )
 
+
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Выполняет действие метода handle_callback."""
+    """Обрабатывает нажатия на inline-кнопки в процессе анкеты."""
     query = update.callback_query
     chat_id = query.message.chat_id
     user = get_or_create_user(chat_id)
@@ -198,8 +202,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     # TODO: обработка следующих этапов анкеты
 
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Выполняет действие метода handle_text."""
+    """Принимает текстовые ответы пользователя и двигает сценарий."""
     chat_id = update.effective_chat.id
     user = get_or_create_user(chat_id)
     text = update.message.text.strip()

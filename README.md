@@ -86,6 +86,33 @@
 - `python backend/manage.py test` — прогон тестов (добавляйте кейсы рядом с кодом)
 - `ruff check backend` / `ruff format backend` — линтер и форматтер
 
+## Docker
+
+### Локальная разработка
+1. Убедитесь, что в корне проекта есть `.env` с базовыми переменными (можно скопировать `.env.example`).
+   Важные переменные: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, `TELEGRAM_BOT_TOKEN`.
+2. Соберите и запустите окружение:
+   ```bash
+   docker compose -f docker/docker-compose.local.yml up --build
+   ```
+3. После старта доступно:
+   - API: `http://127.0.0.1:8000`
+   - Django admin: `http://127.0.0.1:8000/admin/`
+   - PostgreSQL: порт `5432`
+   - Telegram-бот поднимается отдельным контейнером `dvizhenie-bot` (использует тот же код и настройки, что и API).
+   Код монтируется внутрь контейнеров, поэтому изменения применяются без пересборки.
+
+### Продакшен-шаблон
+1. Обновите файл `docker/docker-compose.prod.yml`, указав реальные значения `DJANGO_ALLOWED_HOSTS` и `POSTGRES_PASSWORD`.
+2. При необходимости поменяйте `TELEGRAM_BOT_TOKEN` и другие секреты в `.env`.
+3. Запустите стек:
+   ```bash
+   docker compose -f docker/docker-compose.prod.yml up --build -d
+   ```
+   Команда соберёт образ, выполнит миграции и стартует `gunicorn`; бот поднимется в отдельном контейнере.
+
+Обе Compose-конфигурации используют единый `Dockerfile`, лежащий в корне репозитория, и автоматически выполняют `manage.py migrate`; в prod-варианте дополнительно запускается `collectstatic`.
+
 ## Стиль кода
 - Следуйте PEP 8 и внутренним правилам для именования.
 - Пишите докстринги для модулей, классов и функций на русском языке.
