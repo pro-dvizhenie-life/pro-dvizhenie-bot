@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Sync project to remote host
-        uses: burnett01/rsync-deployments@v1.1
+        uses: burnett01/rsync-deployments@7.1.0
         with:
           switches: -az --delete --exclude ".git/" --exclude "venv/" --exclude ".env"
           path: ./
@@ -28,7 +28,7 @@ jobs:
           remote_key: ${{ secrets.SSH_KEY }}
 
       - name: Apply docker compose
-        uses: appleboy/ssh-action@v0.1.10
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
