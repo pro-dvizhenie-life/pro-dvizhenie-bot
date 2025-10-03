@@ -13,6 +13,7 @@ from config.constants import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
 )
+from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -56,6 +57,17 @@ from ..services.form_runtime import (
     validate_required,
     visible_questions,
 )
+
+AUTO_FILL_DATE_CODES = {"q_application_date"}
+CONSENT_QUESTION_CODE = "q_agree"
+
+
+class ConsentDeclinedError(Exception):
+    """Отмечает отказ пользователя от согласия на обработку данных."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
 
 
 def _serialize_step(step: Optional[Step], answers: Dict[str, Any]) -> Optional[Step]:
@@ -115,9 +127,10 @@ def _get_application(public_id: uuid.UUID) -> Application:
 
 def _get_application_by_token_or_session(public_id: uuid.UUID, request: HttpRequest) -> Optional[Application]:
     """Пытается получить Application по public_id и session_token из куки."""
-    session_token = request.COOKIES.get(COOKIE_SESSION_TOKEN) # Получаем токен из куки
+
+    session_token = request.COOKIES.get(COOKIE_SESSION_TOKEN)  # Получаем токен из куки
     if not session_token:
-        return None # Если токен не найден, возвращаем None
+        return None  # Если токен не найден, возвращаем None
 
     # Пробуем найти Application по public_id и session_token
     # Предполагаем, что session_token хранится в поле public_id, как в create_session
@@ -130,8 +143,7 @@ def _get_application_by_token_or_session(public_id: uuid.UUID, request: HttpRequ
         # В текущей модели session_token не является отдельным полем, он совпадает с public_id
         if str(application.public_id) == session_token:
             return application
-        else:
-            return None # Токен из куки не совпадает с public_id модели
+        return None  # Токен из куки не совпадает с public_id модели
     except Application.DoesNotExist:
         return None
 
@@ -423,14 +435,14 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
     change_status(
         application,
         Application.Status.SUBMITTED,
-        request.user, # или None, если анонимный
+        request.user,  # или None, если анонимный
         request=request,
     )
     audit(
         action="submit",
         table_name="applications",
         record_id=application.public_id,
-        user=request.user, # или None, если анонимный
+        user=request.user,  # или None, если анонимный
         request=request,
     )
     return Response(
@@ -466,7 +478,7 @@ def post_consent(request, public_id: uuid.UUID) -> Response:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     ip_address = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR")
     consent = record_consent(
-        user=request.user, # или None, если анонимный
+        user=request.user,  # или None, если анонимный
         application=application,
         consent_type=serializer.validated_data.get("consent_type", DEFAULT_CONSENT_TYPE),
         is_given=serializer.validated_data.get("is_given", True),
@@ -476,7 +488,7 @@ def post_consent(request, public_id: uuid.UUID) -> Response:
         action="consent",
         table_name="consents",
         record_id=application.public_id,
-        user=request.user, # или None, если анонимный
+        user=request.user,  # или None, если анонимный
         request=request,
     )
     return Response(DataConsentSerializer(consent).data, status=HTTP_201_CREATED)

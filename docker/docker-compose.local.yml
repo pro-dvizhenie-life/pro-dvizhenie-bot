@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: dvizhenie-db
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dvizhenie}
+      POSTGRES_USER: ${POSTGRES_USER:-dvizhenie}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dvizhenie}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: dvizhenie-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost"
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-dvizhenie}
+      POSTGRES_USER: ${POSTGRES_USER:-dvizhenie}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dvizhenie}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    volumes:
+      - ../backend:/app/backend
+    depends_on:
+      - db
+    command: ["python", "backend/manage.py", "runserver", "0.0.0.0:8000"]
+
+  bot:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: dvizhenie-bot
+    env_file:
+      - ../.env
+    environment:
+      DJANGO_DEBUG: "1"
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-dvizhenie}
+      POSTGRES_USER: ${POSTGRES_USER:-dvizhenie}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dvizhenie}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      SKIP_MIGRATIONS: "1"
+    volumes:
+      - ../backend:/app/backend
+    depends_on:
+      - db
+    command: ["python", "backend/manage.py", "run_telegram_bot"]
+
+volumes:
+  db-data:
