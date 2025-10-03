@@ -5,6 +5,7 @@
 - Сократить время обработки заявок сотрудниками фонда
 - Сделать процесс заполнения анкеты удобным для пользователя
 - Обеспечить соответствие требованиям 152-ФЗ «О персональных данных»
+- Предоставить альтернативный канал связи через Telegram
 
 ## Основные функции
 ### Для пользователей
@@ -62,13 +63,27 @@
 - Создайте виртуальное окружение: `python3.11 -m venv venv`.
 - Активируйте окружение: `source venv/bin/activate`.
 - Установите зависимости (пока список формируется): `pip install -r backend/requirements.txt`.
-- Примените миграции: `python backend/manage.py migrate` (добавлена миграция `applications.0002_schema_sync`).
+- Примените миграции: `python backend/manage.py migrate`.
 - Заполните базу тестовыми данными при необходимости и запустите сервер: `python backend/manage.py runserver`.
 
+### Telegram-бот
+1. Пропишите `TELEGRAM_BOT_TOKEN` в `.env` или `backend/config/settings.py` (можно воспользоваться [BotFather](https://t.me/BotFather)).
+2. Поднимите бэкенд (`python backend/manage.py runserver`) — боту нужны API-эндпоинты.
+3. Запустите бота одним из способов:
+   - `python backend/manage.py run_telegram_bot` — полноценный CLI с graceful shutdown.
+   - `python backend/manage.py run_bot_simple` — упрощённый запуск для локальных тестов.
+4. Чтобы работать через webhook, задеплойте приложение и настройте конечную точку `POST /api/v1/applications/telegram/webhook/` (см. `backend/apps/applications/bots/telegram/webhook.py`).
+
+### Тестовые данные и проверки
+После запуска сервера можно наполнить анкету и документы:
+- `python backend/manage.py load_default_survey` — структура анкеты.
+- `python backend/manage.py load_fixtures --count 5 --upload-files` — заявки с загруженными файлами (использует каталог `backend/apps/applications/fixtures/documents/`).
+- `python backend/manage.py check` — быстрая диагностика конфигурации.
+
+
 ## Проверка и вспомогательные команды
-- `python backend/manage.py check` — быстрый smoke-тест конфигурации
 - `python backend/manage.py spectacular --file backend/docs/openapi.yml` — регенерация схемы API
-- `python backend/manage.py test` — полный тестовый прогон (пустой, но хук на будущее)
+- `python backend/manage.py test` — прогон тестов (добавляйте кейсы рядом с кодом)
 - `ruff check backend` / `ruff format backend` — линтер и форматтер
 
 ## Стиль кода

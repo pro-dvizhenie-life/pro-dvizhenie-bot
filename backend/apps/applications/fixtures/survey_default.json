@@ -93,6 +93,23 @@
   },
   {
     "model": "applications.question",
+    "pk": 59,
+    "fields": {
+      "step": 1,
+      "code": "q_application_date",
+      "type": "date",
+      "label": "Дата заполнения заявки",
+      "required": false,
+      "payload": {
+        "order": 30,
+        "help_text": "Определяется автоматически.",
+        "hidden": true,
+        "constraints": {}
+      }
+    }
+  },
+  {
+    "model": "applications.question",
     "pk": 3,
     "fields": {
       "step": 2,
@@ -264,11 +281,11 @@
       "step": 2,
       "code": "q_tsr_cert_valid_until",
       "type": "date",
-      "label": "Срок действия сертификата",
+      "label": "Введите дату окончания действия сертификата",
       "required": true,
       "payload": {
         "order": 110,
-        "help_text": "Дата окончания действия сертификата.",
+        "help_text": "Укажите дату в формате ГГГГ-ММ-ДД или дд.мм.гггг.",
         "constraints": {}
       }
     }
@@ -311,12 +328,12 @@
     "fields": {
       "step": 2,
       "code": "q_need_consulting",
-      "type": "multiselect",
-      "label": "Нужна ли консультационная помощь?",
+      "type": "textarea",
+      "label": "Нужна ли вам консультационная помощь в составлении рекомендаций ИПРА, прохождении МСЭ, получении ТСР от СФР?",
       "required": false,
       "payload": {
         "order": 140,
-        "help_text": "Можно выбрать несколько вариантов.",
+        "help_text": "Ответьте текстом: что именно пригодится?",
         "constraints": {}
       }
     }
@@ -423,12 +440,12 @@
     "fields": {
       "step": 3,
       "code": "q_tsrs_in_ipra",
-      "type": "boolean",
-      "label": "Прописано ли ТСР в медзаключении или ИПРА?",
+      "type": "textarea",
+      "label": "Расскажите, прописано ли ТСР в медзаключении или ИПРА",
       "required": false,
       "payload": {
         "order": 40,
-        "help_text": "Если нет, расскажите почему.",
+        "help_text": "Если нет, опишите, с какими сложностями столкнулись.",
         "constraints": {}
       }
     }
@@ -439,12 +456,12 @@
     "fields": {
       "step": 3,
       "code": "q_deadline_need",
-      "type": "date",
-      "label": "Есть ли важные сроки, к которым нужна помощь?",
+      "type": "textarea",
+      "label": "Напишите, есть ли важные сроки, к которым нужна помощь",
       "required": false,
       "payload": {
         "order": 50,
-        "help_text": "Например, реабилитация или соревнования.",
+        "help_text": "Например, реабилитация, соревнования или другой дедлайн.",
         "constraints": {}
       }
     }
@@ -1061,46 +1078,6 @@
       "value": "parts",
       "label": "Комплектующие",
       "order": 3
-    }
-  },
-  {
-    "model": "applications.option",
-    "pk": 8,
-    "fields": {
-      "question": 16,
-      "value": "ipra",
-      "label": "Да, по ИПРА",
-      "order": 1
-    }
-  },
-  {
-    "model": "applications.option",
-    "pk": 9,
-    "fields": {
-      "question": 16,
-      "value": "mse",
-      "label": "Да, по МСЭ",
-      "order": 2
-    }
-  },
-  {
-    "model": "applications.option",
-    "pk": 10,
-    "fields": {
-      "question": 16,
-      "value": "sfr",
-      "label": "Да, по СФР",
-      "order": 3
-    }
-  },
-  {
-    "model": "applications.option",
-    "pk": 11,
-    "fields": {
-      "question": 16,
-      "value": "none",
-      "label": "Нет",
-      "order": 4
     }
   },
   {

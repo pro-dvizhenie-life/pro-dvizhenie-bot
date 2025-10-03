@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 from config.constants import (
@@ -13,6 +14,7 @@ from config.constants import (
     MAX_PAGE_SIZE,
 )
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import permissions
 from rest_framework.decorators import api_view, permission_classes
@@ -38,10 +40,12 @@ from ..serializers import (
     SubmitResponseSerializer,
 )
 from ..services.application_service import (
+    CONSENT_DECLINED_MESSAGE,
     add_comment,
     audit,
     change_status,
     ensure_applicant_account,
+    handle_consent_decline,
     record_consent,
 )
 from ..services.form_runtime import (
@@ -59,7 +63,11 @@ def _serialize_step(step: Optional[Step], answers: Dict[str, Any]) -> Optional[S
 
     if step is None:
         return None
-    questions = visible_questions(step, answers)
+    questions = [
+        question
+        for question in visible_questions(step, answers)
+        if not (question.payload or {}).get("hidden")
+    ]
     step._prefetched_objects_cache = {"questions": questions}
     return step
 
@@ -73,7 +81,22 @@ def _serialize_application(application: Application, answers: Dict[str, Any]) ->
         "current_stage": application.current_stage,
         "current_step": step,
         "answers": answers,
+        "restart_available": step is None,
     }
+
+
+def _ensure_default_answers(application: Application) -> None:
+    for code in AUTO_FILL_DATE_CODES:
+        if application.answers.filter(question__code=code).exists():
+            continue
+        question = Question.objects.filter(step__survey=application.survey, code=code).first()
+        if not question:
+            continue
+        Answer.objects.update_or_create(
+            application=application,
+            question=question,
+            defaults={"value": date.today().isoformat()},
+        )
 
 
 def _get_application_queryset():
@@ -150,6 +173,9 @@ def _apply_answer_patch(
                 }
             )
             continue
+        if question.code == CONSENT_QUESTION_CODE and normalized is False:
+            handle_consent_decline(application)
+            raise ConsentDeclinedError(CONSENT_DECLINED_MESSAGE)
         to_update.append((question, normalized))
     if errors:
         return errors
@@ -216,7 +242,8 @@ def create_session(request, survey_code: str) -> Response:
         current_stage=current_step.order if current_step else 0,
         applicant_type=applicant_type or "",
     )
-    answers: Dict[str, Any] = {}
+    _ensure_default_answers(application)
+    answers = build_answer_dict(application)
     payload = _serialize_application(application, answers)
     serializer = DraftOutSerializer(payload)
     response = Response(serializer.data, status=HTTP_201_CREATED)
@@ -280,12 +307,19 @@ def patch_draft(request, public_id: uuid.UUID) -> Response:
 
     # Остальная логика как есть
     items = request.data.get("answers", []) if isinstance(request.data, dict) else []
-    errors = _apply_answer_patch(application, items)
+    try:
+        errors = _apply_answer_patch(application, items)
+    except ConsentDeclinedError as exc:
+        return Response(
+            {"detail": exc.message, "consent_declined": True},
+            status=HTTP_400_BAD_REQUEST,
+        )
     if errors:
         return _validation_error(errors)
     step_code = request.data.get("step_code") if isinstance(request.data, dict) else None
     if step_code:
         _set_current_step(application, step_code)
+    _ensure_default_answers(application)
     answers = build_answer_dict(application)
     ensure_applicant_account(application, answers, request=request)
     payload = _serialize_application(application, answers)
@@ -311,9 +345,16 @@ def post_next(request, public_id: uuid.UUID) -> Response:
 
     # Остальная логика как есть
     if isinstance(request.data, dict) and request.data.get("answers"):
-        errors = _apply_answer_patch(application, request.data["answers"])
+        try:
+            errors = _apply_answer_patch(application, request.data["answers"])
+        except ConsentDeclinedError as exc:
+            return Response(
+                {"detail": exc.message, "consent_declined": True},
+                status=HTTP_400_BAD_REQUEST,
+            )
         if errors:
             return _validation_error(errors)
+    _ensure_default_answers(application)
     answers = build_answer_dict(application)
     ensure_applicant_account(application, answers, request=request)
     if application.current_step:
@@ -323,11 +364,18 @@ def post_next(request, public_id: uuid.UUID) -> Response:
     upcoming = next_step(application.survey, application.current_step, answers)
     application.current_step = upcoming
     _update_stage_from_step(application)
+    restart_url = None
+    if upcoming is None:
+        restart_url = request.build_absolute_uri(
+            reverse("applications:create_session", kwargs={"survey_code": application.survey.code})
+        )
     payload = {
         "public_id": application.public_id,
         "current_stage": application.current_stage,
         "current_step": _serialize_step(upcoming, answers),
         "answers": answers,
+        "restart_available": upcoming is None,
+        "restart_url": restart_url,
     }
     serializer = NextOutSerializer(payload)
     return Response(serializer.data)
@@ -351,9 +399,16 @@ def post_submit(request, public_id: uuid.UUID) -> Response:
 
     # Остальная логика как есть
     if isinstance(request.data, dict) and request.data.get("answers"):
-        errors = _apply_answer_patch(application, request.data["answers"])
+        try:
+            errors = _apply_answer_patch(application, request.data["answers"])
+        except ConsentDeclinedError as exc:
+            return Response(
+                {"detail": exc.message, "consent_declined": True},
+                status=HTTP_400_BAD_REQUEST,
+            )
         if errors:
             return _validation_error(errors)
+    _ensure_default_answers(application)
     answers = build_answer_dict(application)
     ensure_applicant_account(application, answers, request=request)
     step_errors: List[Dict[str, str]] = []

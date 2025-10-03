@@ -25,19 +25,22 @@
         ]
       },
       { "id": 17, "code": "certificate_tsr", "type": "yes_no", "label": "Есть ли сертификат на ТСР?", "required": false },
-      { "id": 18, "code": "other_funds", "type": "yes_no", "label": "Есть ли открытые сборы в других фондах?", "required": false },
       {
-        "id": 19,
+        "id": 18,
+        "code": "certificate_tsr_expiry",
+        "type": "date",
+        "label": "Введите дату окончания действия сертификата",
+        "required": true,
+        "help_text": "Укажите дату в формате ГГГГ-ММ-ДД или дд.мм.гггг."
+      },
+      { "id": 19, "code": "other_funds", "type": "yes_no", "label": "Есть ли открытые сборы в других фондах?", "required": false },
+      {
+        "id": 20,
         "code": "consult_help",
-        "type": "select_many",
-        "label": "Нужна ли консультационная помощь?",
+        "type": "textarea",
+        "label": "Нужна ли вам консультационная помощь в составлении рекомендаций ИПРА, прохождении МСЭ, получении ТСР от СФР?",
         "required": false,
-        "options": [
-          { "value": "ipra", "label": "По ИПРА" },
-          { "value": "mse", "label": "По МСЭ" },
-          { "value": "sfr", "label": "По СФР" },
-          { "value": "none", "label": "Нет" }
-        ]
+        "help_text": "Ответьте текстом: какие консультации пригодятся?"
       }
     ]
   },
