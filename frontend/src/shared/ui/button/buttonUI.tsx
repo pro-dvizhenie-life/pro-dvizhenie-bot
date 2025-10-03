@@ -6,7 +6,7 @@ type Props = ButtonProps
 export const ButtonUI: FC<Props> = ({
 	variant = 'filled',
 	color = 'indigo',
-	size = 'md',
+	// size = 'md',
 	radius = 'xl',
 	style,
 	...props
@@ -15,12 +15,13 @@ export const ButtonUI: FC<Props> = ({
 		<Button
 			variant={variant}
 			color={color}
-			size={size}
+			size={'xl'}
 			radius={radius}
 			style={{
-				maxWidth: 235,
+				// maxWidth: 235,
 				width: '100%',
 				height: 48,
+				marginTop: 24,
 				...style,
 			}}
 			{...props}
