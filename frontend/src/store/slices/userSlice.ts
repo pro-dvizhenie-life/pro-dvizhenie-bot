@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { Step } from '../../shared/lib/types'
 import { getPublicId } from '../../shared/api/userApi'
+import type { RootState } from '../store'
 
 interface UserState {
     publicId: string
@@ -9,14 +10,21 @@ interface UserState {
     isLoading: boolean
     error: string | null
 }
+export const selectPublicId = (state: RootState) => state.user.publicId
 
-export const initPublicId = createAsyncThunk(
-    'user/initPublicId',
-    async () => {
-        const { public_id, current_step } = await getPublicId()
-        return { publicId: public_id, currentStep: current_step }
+export const initPublicId = createAsyncThunk<
+    { publicId: string; currentStep: Step },
+    void,
+    { state: RootState }
+>('user/initPublicId', async (_, { getState }) => {
+    const { user } = getState()
+    if (user.publicId && user.currentStep) {
+        return { publicId: user.publicId, currentStep: user.currentStep }
     }
-)
+
+    const { public_id, current_step } = await getPublicId()
+    return { publicId: public_id, currentStep: current_step }
+})
 
 const initialState: UserState = {
     publicId: '',
