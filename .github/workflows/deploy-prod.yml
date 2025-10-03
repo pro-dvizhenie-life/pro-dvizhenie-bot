@@ -32,7 +32,7 @@ jobs:
       - name: Sync project to remote host
         uses: burnett01/rsync-deployments@7.1.0
         with:
-          switches: -az --delete --exclude ".git/" --exclude "venv/" --exclude ".env"
+          switches: -az --delete --exclude ".git/" --exclude "venv/" --exclude ".env" --exclude "backend/staticfiles/" --exclude "backend/media/"
           path: ./
           remote_path: ${{ secrets.REMOTE_PATH }}
           remote_host: ${{ secrets.SSH_HOST }}
