@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+import os
+from urllib.parse import urlparse
+
 
 class DocumentStorageError(RuntimeError):
     """Ошибка при работе с хранилищем документов."""
@@ -35,28 +38,18 @@ class AbstractDocumentStorage:
         content_type: str,
         max_size: int,
     ) -> PresignedUpload:
-        """Возвращает параметры для клиентской загрузки файла."""
-
         raise NotImplementedError
 
     def generate_download(self, *, key: str, expires_in: Optional[int] = None) -> PresignedDownload:
-        """Генерирует параметры для скачивания файла по временной ссылке."""
-
         raise NotImplementedError
 
     def delete_object(self, *, key: str) -> None:
-        """Удаляет объект из хранилища по ключу."""
-
         raise NotImplementedError
 
     def read_object(self, *, key: str) -> bytes:
-        """Читает содержимое объекта и возвращает байты."""
-
         raise NotImplementedError
 
     def upload_bytes(self, *, key: str, content: bytes, content_type: str) -> None:
-        """Сохраняет переданные байты в хранилище."""
-
         raise NotImplementedError
 
 
@@ -77,14 +70,12 @@ class S3DocumentStorage(AbstractDocumentStorage):
         signature_version: Optional[str] = None,
         addressing_style: Optional[str] = None,
     ) -> None:
-        """Создаёт клиент S3 с заданными параметрами и проверяет конфигурацию."""
-
         if not bucket:
             raise DocumentStorageError("Не указан bucket для документохранилища")
         try:
             import boto3
             from botocore.config import Config
-        except ImportError as exc:  # pragma: no cover - зависит от окружения
+        except ImportError as exc:  # pragma: no cover
             raise DocumentStorageError(
                 "Требуется установить зависимость 'boto3' для работы с хранилищем"
             ) from exc
@@ -114,6 +105,21 @@ class S3DocumentStorage(AbstractDocumentStorage):
         self._upload_expiration = upload_expiration
         self._download_expiration = download_expiration
 
+    def _publicize(self, url: str) -> str:
+        """Преобразует URL в публичный, если задан DOCUMENTS_STORAGE_PUBLIC_ENDPOINT."""
+        public_ep = os.getenv("DOCUMENTS_STORAGE_PUBLIC_ENDPOINT", "").strip()
+        if not public_ep:
+            return url
+        try:
+            pu = urlparse(public_ep)
+            u = urlparse(url)
+            return u._replace(
+                scheme=pu.scheme or u.scheme,
+                netloc=pu.netloc or u.netloc,
+            ).geturl()
+        except Exception:
+            return url
+
     def generate_upload(
         self,
         *,
@@ -138,7 +144,7 @@ class S3DocumentStorage(AbstractDocumentStorage):
         )
         headers: Dict[str, Any] = {}
         return PresignedUpload(
-            url=response["url"],
+            url=self._publicize(response["url"]),
             method="POST",
             fields=response.get("fields", {}),
             headers=headers,
@@ -152,16 +158,12 @@ class S3DocumentStorage(AbstractDocumentStorage):
             Params={"Bucket": self._bucket, "Key": key},
             ExpiresIn=expires_in or self._download_expiration,
         )
-        return PresignedDownload(url=url, method="GET", headers={})
+        return PresignedDownload(url=self._publicize(url), method="GET", headers={})
 
     def delete_object(self, *, key: str) -> None:
-        """Удаляет объект из S3."""
-
         self._client.delete_object(Bucket=self._bucket, Key=key)
 
     def read_object(self, *, key: str) -> bytes:
-        """Читает объект из S3 и возвращает его содержимое."""
-
         response = self._client.get_object(Bucket=self._bucket, Key=key)
         body = response.get("Body")
         if body is None:
@@ -169,8 +171,6 @@ class S3DocumentStorage(AbstractDocumentStorage):
         return body.read()
 
     def upload_bytes(self, *, key: str, content: bytes, content_type: str) -> None:
-        """Сохраняет данные напрямую в бакет S3."""
-
         try:
             self._client.put_object(
                 Bucket=self._bucket,
@@ -178,7 +178,7 @@ class S3DocumentStorage(AbstractDocumentStorage):
                 Body=content,
                 ContentType=content_type,
             )
-        except Exception as exc:  # pragma: no cover - зависит от инфраструктуры
+        except Exception as exc:  # pragma: no cover
             raise DocumentStorageError("Не удалось сохранить файл в хранилище") from exc
 
 
