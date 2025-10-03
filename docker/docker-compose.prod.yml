@@ -10,6 +10,42 @@ services:
       - db-data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: dvizhenie-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
+    entrypoint: ["/bin/sh","-lc"]
+    command: |
+      mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && \
+      mc mb -p local/$MINIO_BUCKET || true && \
+      mc anonymous set private local/$MINIO_BUCKET || true && \
+      echo "MinIO bucket '$MINIO_BUCKET' ready"
+    restart: "no"
+
   backend:
     build:
       context: ..
@@ -34,6 +70,8 @@ services:
       POSTGRES_PORT: 5432
     depends_on:
       - db
+      - minio
+      - minio-setup
     restart: unless-stopped
     command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--chdir", "backend"]
 
@@ -61,3 +99,4 @@ services:
 
 volumes:
   db-data:
+  minio-data:
