@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 SessionLocal = init_telegram_db()
 
 
-
 async def handle_documents(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает загрузку документов и команду завершения."""
     chat_id = update.effective_chat.id
@@ -40,7 +39,6 @@ async def handle_documents(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Пожалуйста, отправьте документ в виде фото или файла.")
 
 
-
 async def process_document_photo(update: Update, user: User):
     """Сохраняет фотографию документа и уведомляет пользователя."""
     try:
@@ -60,7 +58,6 @@ async def process_document_photo(update: Update, user: User):
     except Exception as e:
         logger.error(f"Ошибка при загрузке документа: {e}")
         await update.message.reply_text("Произошла ошибка при загрузке документа. Попробуйте ещё раз.")
-
 
 
 async def process_document_file(update: Update, user: User):

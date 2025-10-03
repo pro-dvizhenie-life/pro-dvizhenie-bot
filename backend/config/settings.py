@@ -40,10 +40,10 @@ def load_env(env_path: Path) -> None:
         os.environ.setdefault(key, value)
         print(f"✅ Загружена переменная: {key}")
 
+
 env_path = PROJECT_ROOT / '.env'
 print(f"🔍 Ищем .env файл: {env_path}")
 load_env(PROJECT_ROOT / '.env')
-
 
 
 def str_to_bool(value: str | None, *, default: bool = False) -> bool:
@@ -65,7 +65,13 @@ SECRET_KEY = (
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = str_to_bool(os.environ.get('DJANGO_DEBUG'), default=True)
 
-ALLOWED_HOSTS: list[str] = []
+RAW_ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS')
+if RAW_ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [host.strip() for host in RAW_ALLOWED_HOSTS.split(',') if host.strip()]
+elif DEBUG:
+    ALLOWED_HOSTS: list[str] = ['*']
+else:
+    ALLOWED_HOSTS: list[str] = []
 
 
 # Application definition
@@ -127,6 +133,17 @@ DATABASES = {
     }
 }
 
+POSTGRES_HOST = os.getenv('POSTGRES_HOST')
+if POSTGRES_HOST:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'postgres'),
+        'USER': os.getenv('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+        'HOST': POSTGRES_HOST,
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -163,6 +180,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -179,6 +198,12 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+RAW_CSRF_TRUSTED_ORIGINS = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS')
+if RAW_CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip() for origin in RAW_CSRF_TRUSTED_ORIGINS.split(',') if origin.strip()
+    ]
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -203,6 +228,7 @@ SPECTACULAR_SETTINGS = {
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 print(f"🔑 TELEGRAM_BOT_TOKEN: {'***' + TELEGRAM_BOT_TOKEN[-5:] if TELEGRAM_BOT_TOKEN else 'НЕ НАЙДЕН'}")
+
 
 def _int_from_env(name: str, default: int) -> int:
     value = os.environ.get(name)
