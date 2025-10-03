@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../shared/hooks/redux'
 import { initPublicId } from '../../store/slices/userSlice'
 import { setStep, selectStep } from '../../store/slices/stepsSlice'
 import type { Step } from '../../shared/lib/types'
+import { DynamicStep } from '../../features/dynamicStep/dynamicStep'
 
 export const StepPage = () => {
     const dispatch = useAppDispatch()
@@ -24,5 +25,5 @@ export const StepPage = () => {
         if (step) console.log('step in store:', step)
     }, [step])
 
-    return null
+    return <DynamicStep />
 }
